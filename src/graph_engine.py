@@ -1,11 +1,27 @@
 import networkx as nx
 import numpy as np
 
+
+# Defining elective groups- like capstone courses
+ELECTIVE_GROUPS = {
+    "capstone_group": {"2IRR60", "2IRR70", "2IRR80"}
+}
+def is_in_elective_group(node):
+    for group in ELECTIVE_GROUPS.values():
+        if node in group:
+            return True
+    return False
+
+def get_group_members(node):
+    for group in ELECTIVE_GROUPS.values():
+        if node in group:
+            return group
+    return None
+
 #longest path
 def compute_longest_path_depth(G):
-    """Measures systemic delay risk by identifying longest prerequisite chains. Assumes G is a DAG."""
     if not nx.is_directed_acyclic_graph(G):
-        raise ValueError("Graph must be a DAG for the longest path computation.")
+        raise ValueError("Graph must be a DAG.")
 
     topo = list(nx.topological_sort(G))
     longest = {node: 0 for node in topo}
@@ -21,25 +37,35 @@ def compute_longest_path_depth(G):
 
 #blocking factor
 def compute_blocking_factor(G):
-    """Downstream credit impact normalized by total curriculum credits."""
     credit_attrs = nx.get_node_attributes(G, "credits")
     total_credits = sum(credit_attrs.values()) if credit_attrs else 1
 
     blocking = {}
 
     for node in G.nodes():
-        descendants = nx.descendants(G, node)
-        downstream_credits = sum(
-            G.nodes[d].get("credits", 0) for d in descendants
-        )
-        blocking[node] = downstream_credits / total_credits
 
+        descendants = nx.descendants(G, node)
+
+        # Remove elective siblings from descendant set
+        if is_in_elective_group(node):
+            group = get_group_members(node)
+            descendants = {
+                d for d in descendants
+                if d not in group
+            }
+
+        downstream_credits = sum(
+            G.nodes[d].get("credits", 0)
+            for d in descendants
+        )
+
+        blocking[node] = downstream_credits / total_credits
     return blocking
 
 
 #articulation reach impact
 def compute_articulation_reach(G):
-    """Measures structural vulnerability as reachability loss rom entry nodes when a node is removed"""
+
     roots = [n for n in G.nodes if G.in_degree(n) == 0]
 
     def reachable_count(graph):
@@ -54,11 +80,24 @@ def compute_articulation_reach(G):
     impact = {}
 
     for node in G.nodes():
+        # If elective, simulate removal but check if sibling remains
+        if is_in_elective_group(node):
+            group = get_group_members(node)
+
+            # If removing node still leaves another elective alive,
+            # no structural collapse occurs.
+            remaining = group - {node}
+            if any(r in G.nodes for r in remaining):
+                impact[node] = 0
+                continue
         G_temp = G.copy()
         G_temp.remove_node(node)
         new_count = reachable_count(G_temp)
-        impact[node] = (baseline - new_count) / baseline if baseline > 0 else 0
 
+        impact[node] = (
+            (baseline - new_count) / baseline
+            if baseline > 0 else 0
+        )
     return impact
 
 # Min max normalization.
@@ -81,8 +120,10 @@ def normalize(metric_dict):
 
 #Aggregates normalized metrics into single structural risk score.
 def compute_structural_risk_score(G, weights=None):
+
     if not nx.is_directed_acyclic_graph(G):
         raise ValueError("Structural risk requires a DAG.")
+
     if weights is None:
         weights = {
             "block": 0.3,
@@ -111,3 +152,5 @@ def compute_structural_risk_score(G, weights=None):
             for m in metrics
         )
     return risk_scores, metrics
+
+
