@@ -1,4 +1,4 @@
-course_code,title,year,quarter,credits,learning_line,prerequisites_formal,prerequisites_informal,category,serious_pass_rate_2024,pass_rate_2024,content,learning_outcomes_codes,learning_outcomes_text
+ï»¿course_code,title,year,quarter,credits,learning_line,prerequisites_formal,prerequisites_informal,category,serious_pass_rate_2024,pass_rate_2024,content,learning_outcomes_codes,learning_outcomes_text
 2WBB0,Calculus variant 2,1,1,5,Foundations,,,Introductory,0.7094,0.6877,"Algebraic Skills, Functions(C1)
 
 Recapitulation of elementary algebra and high school mathematics with emphasis on algebraic skills (such solving inequalities), Cartesian coordinates, and functions;
@@ -55,26 +55,26 @@ Induction, strong induction, inductive definition.","ATC1,ATC2,ATC4,ATC5","""Stu
 (d) use more advanced algorithm design techniques (backtracking, greedy algorithm, dynamic programming) to solve optimization problems and use advanced graph algorithms (shortest paths, maximum flows) to solve other computational problems; and
 (e) prove the correctness of algorithms thus developed and can characterize their efficiency by performing a worst-case asymptotic analysis."",Students can effectively communicate to peers about topics in theoretical computer science (e.g., algorithms, automata, grammars, formal syntax) and support their claims with mathematical proofs.,After completing the learning line, students have a systematic, formal approach to solving computational problems. They aim to solve computational problems by designing solutions that are provably correct and efficient and reflect on the limitations of their solutions."
 2DRR00,Linear Algebra + Applications,1,2,5,Foundations,,,Introductory,0.8430,0.8263,"Matrices, vectors
-• Operations, matrix and vector norms, angles between vectors
-• Applications in recommender systems
+â€¢ Operations, matrix and vector norms, angles between vectors
+â€¢ Applications in recommender systems
 Linear systems and least squares problems
-• Gaussian elimination, Gauss and Gauss-Jordan form, solutions, rref, inverse matrices
-• Normal equations
-• Applications in data fitting
+â€¢ Gaussian elimination, Gauss and Gauss-Jordan form, solutions, rref, inverse matrices
+â€¢ Normal equations
+â€¢ Applications in data fitting
 Rotations, projections, and reflections
-• Corresponding matrices
-• Applications in Computer Graphics and robotics
+â€¢ Corresponding matrices
+â€¢ Applications in Computer Graphics and robotics
 Eigenvalues and eigenvectors
-• Eigenvalue decomposition
-• Determinants
-• Google PageRank, clustering, and other applications in Markov chains
+â€¢ Eigenvalue decomposition
+â€¢ Determinants
+â€¢ Google PageRank, clustering, and other applications in Markov chains
 Singular value decomposition (SVD/PCA)
-• Singular values and vectors
-• Orthogonality, rank, linear dependency, low-rank matrices, TSVD
-• Applications in Web Analytics and data/text mining, feature extraction
+â€¢ Singular values and vectors
+â€¢ Orthogonality, rank, linear dependency, low-rank matrices, TSVD
+â€¢ Applications in Web Analytics and data/text mining, feature extraction
 Implementing linear algebra
-• Flops and memory costs, finite precision arithmetic and rounding errors
-• Linear algebra with Python, Julia, Matlab, or another language of choice","F1,F3,F5","""Students have a working knowledge of
+â€¢ Flops and memory costs, finite precision arithmetic and rounding errors
+â€¢ Linear algebra with Python, Julia, Matlab, or another language of choice","F1,F3,F5","""Students have a working knowledge of
 (a) basic algebra, transcendental functions, limits, vectors in euclidean space, integration, differentiation, first order differential equations
 (b) vectors and matrices, including eigen vectors, determinants, rank, low rank, orthogonality, (in)dependence, positive definiteness
 (c) probability theory, including discrete and continuous random variables, joint distributions, independence, Central Limit Theorem, discrete Markov chains
@@ -201,7 +201,7 @@ query languages and back; equivalence of query languages.","Sys1,Sys3,Sys4","Stu
 4CBLW00-BCS,Multidisciplinary CBL,2,4,5,External,,,Advanced,0.9761,0.9704,"
 Students can choose from a variety of projects on different topics, organized by different combinations of departments. Each project addresses an open challenge in either Engineering Design or Scientific Inquiry. These challenges are intentionally designed to be complex and extensive, requiring more than what can be accomplished by an experienced team within an extended timeframe. Therefore, the initial step for students in a project is to define a research question or design goal that they can reasonably address within the course's timeframe.
 
-The projects follow a structured format and adhere to the timeline of a linear design process, such as the Classical Engineering model, the CBL framework ""Engage – Investigate – Act,"" the Double Diamond model, or the Design Thinking model. These models share characteristics of subsequent diverging and converging phases, along with iterative processes.",,
+The projects follow a structured format and adhere to the timeline of a linear design process, such as the Classical Engineering model, the CBL framework ""Engage â€“ Investigate â€“ Act,"" the Double Diamond model, or the Design Thinking model. These models share characteristics of subsequent diverging and converging phases, along with iterative processes.",,
 2IRR40,Security,2,4,5,Systems,,"2IRR20,2INC0",Deepening,0.8926,0.8386,"In the frontal lectures, the course will cover the following topics:
 Key Notions and Terms; Security Attributes/Objectives/Services, Security Protocols, and Attacks & Attacker Models.
 Cryptographic primitives; including symmetric encryption, asymmetric encryption, and Cryptographic Data Integrity Algorithms such as Hash functions, Message Authentication Codes, and Digital Signatures.
@@ -224,7 +224,7 @@ Software architecting, design and modeling: focusing on the process of architect
 Quality assurance and software testing: introduces the kinds of testing necessary for the executed project and goes beyond the simple unit testing already presented in previous courses. This part also discussed DevOps and CI/CD processes
 Lecture from industry on emerging topics like low code development, software engineering for AI systems, and others
 ","SD0,SD1, SD2,SD3,SD4,SD5,SD6",
-2ICS00,Bachelor Final Project BCS,3,"3,4",10,All,"2WBB0,2IP90,2IT60,2DRR00,2IT80,2IAB1,2DRR10,2IL50,2IC30,2IRR00,2IRR10,0LVX10",,Advanced,,,"In this course, the students apply and integrate knowledge and skills that have been acquired during the bachelor program in a research-oriented project. This project will be carried out with great independence of the students under the advice of an academic supervisor. The students make and execute a project plan, explore, relate, and use scientific literature in the context of the project’s topic, present the project and its outcomes both orally and in writing, and evaluate the results and decisions made during the project.",,
+2ICS00,Bachelor Final Project BCS,3,"3,4",10,All,"2WBB0,2IP90,2IT60,2DRR00,2IT80,2IAB1,2DRR10,2IL50,2IC30,2IRR00,2IRR10,0LVX10",,Advanced,,,"In this course, the students apply and integrate knowledge and skills that have been acquired during the bachelor program in a research-oriented project. This project will be carried out with great independence of the students under the advice of an academic supervisor. The students make and execute a project plan, explore, relate, and use scientific literature in the context of the projectâ€™s topic, present the project and its outcomes both orally and in writing, and evaluate the results and decisions made during the project.",,
 2IRR60,Capstone Heuristic Algorithms,3,1,5,Algorithms & Theory of Computing,2ILC0,,Advanced,,,"There are various algorithms and algorithmic techniques that allow us to efficiently solve algorithmic problems with guarantees on both the solution quality and the running time of the algorithms. However, there are also algorithmic problems that are provenly hard and for which we cannot provide such guarantees in general. These problems are often encountered in practice and good solutions are required for practical applications, regardless of the fact that we cannot provide any guarantees on these solutions. In this course we cover heuristic algorithmic techniques for optimization problems that cannot provide guarantees on the computed solutions, but do have strong theoretical foundations, including local search, simulated annealing, and evolutionary algorithms. Furthermore, we cover tools that can be used to solve hard problems optimally, but without any guarantees on the running time of the algorithm, including ILP solvers and SAT solvers. Finally, we cover how the performance of algorithms can be evaluated experimentally, in the absence of any formal guarantees.
  ",,
 2IRR70,Capstone Systems Integration,3,1,5,Systems,,"2INC0,2IRR20,2ID50,2IRR40,2IRR10",Advanced,,,"After this course, the student is able to formulate observed functional, performance, and security issues in the operation of a distributed cyber-physical system of medium-sized complexity (ILO1). The student can formulate these such that they can be replicated (ILO2), and the student can analyse the combination of technologies/disciplinaries involved in these issues (ILO3). Finally, the student is able to work on the solution of issues in a methodical way, making use of combined basic disciplinary knowledge from relevant domains (ILO4). Note that, while the course contains hands-on deliverables and makes use of the students existing professional skills to show the quality of their work, it is not an explicit ILO of the course to improve those skills. A students final assessment may be influenced by a lack of such professional skills, but this is deemed fair considering the position of the course in the curriculum.",,
@@ -236,7 +236,7 @@ From the middle of week 6, two weeks where groups apply methods they learned to 
 Final presentation session",,
 0LVX20,ITEC Engineering for Society,3,3,5,External,,,Deepening,,,"Technological innovation is one of the key elements of human progress. New technologies can provide business opportunities, solve social problems, and allow users to do new things. However, even with clear expectations and active participation of a broad range of stakeholders, new technologies also raise ethical questions, can have serious implications for society and the environment, and pose new risks, often unknown and unknowable before the new technologies reach maturity. Society not only shapes technology but technology also shapes society. 
 
-New technologies strongly depend on social acceptance and cannot escape public debates of regulation and ethics. Engineers who develop technologies must do that responsibly, since they do not just make things; they build society. They need to reflect on – and include – public values in this process. This requires methods and approaches to evaluate and compare technologies. This course provides theoretical and practical frameworks for assessing and designing responsible innovations.",,
+New technologies strongly depend on social acceptance and cannot escape public debates of regulation and ethics. Engineers who develop technologies must do that responsibly, since they do not just make things; they build society. They need to reflect on â€“ and include â€“ public values in this process. This requires methods and approaches to evaluate and compare technologies. This course provides theoretical and practical frameworks for assessing and designing responsible innovations.",,
 ElectiveY2Q1,Elective,2,1,5,External,,,,,,,,
 ElectiveY2Q2,Elective,2,2,5,External,,,,,,,,
 ElectiveY2Q3,Elective,2,3,5,External,,,,,,,,
