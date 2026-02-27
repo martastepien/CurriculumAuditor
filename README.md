@@ -36,32 +36,6 @@ BEP/
 └── README.md
 ```
 
-## Installation
-
-### Requirements
-
-- Python 3.8+
-- Required packages:
-  ```bash
-  pip install pandas networkx numpy matplotlib
-  ```
-
-## Quick start
-
-```bash
-# Activate virtual environment
-source .venv/bin/activate
-
-# Run analysis
-python src/comparative_study.py
-
-# View visualizations
-python src/visualizations.py
-
-# (Optional) Justify 3-metric selection with correlation analysis
-python src/metric_redundancy_analysis.py
-```
-
 **Data format**: CSV with columns `course_code`, `title`, `credits`, `year`, `prerequisites_formal` (comma-separated like `2IT60, 2IT80`)
 ```
 
