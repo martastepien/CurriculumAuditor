@@ -46,53 +46,23 @@ BEP/
   pip install pandas networkx numpy matplotlib
   ```
 
-## Usage
-
-### 1. Prepare your data
-
-Create a CSV file with the following required columns:
-
-| Column | Description | Example |
-|--------|-------------|---------|
-| `course_code` | Unique course identifier | `2IT60` |
-| `title` | Course name | `Logic and Set Theory` |
-| `credits` | Credit hours | `5` |
-| `year` | Study year | `1` |
-| `prerequisites_formal` | Comma-separated prerequisite codes | `2IT60, 2IT80, 2IRR90` |
-
-**Important**: Multiple prerequisites should be comma-separated (spaces optional). For example `2IT60, 2IT80, 2IRR90` and `2IT60,2IT80,2IRR90` are acceptable formats.
-
-Optional columns: `quarter`, `learning_line`, `prerequisites_informal`, `category`, `pass_rate`, etc.
-
-### 2. Run Structural Analysis
+## Quick start
 
 ```bash
-cd src
-python comparative_study.py
+# Activate virtual environment
+source .venv/bin/activate
+
+# Run analysis
+python src/comparative_study.py
+
+# View visualizations
+python src/visualizations.py
+
+# (Optional) Justify 3-metric selection with correlation analysis
+python src/metric_redundancy_analysis.py
 ```
 
-This will:
-- Load your curriculum data from `data/raw/CSE_curriculum_data.csv`
-- Build the prerequisite graph
-- Compute all risk metrics
-- Save results to `data/processed/structural_risk_baseline.csv`
-- Display top 10 highest-risk courses
-
-### 3. Visualize Results
-
-```python
-from visualizations import plot_top_structural_risk, plot_metric_distribution
-
-# Show top 15 highest risk courses
-plot_top_structural_risk(top_n=15)
-
-# View distribution of blocking factors
-plot_metric_distribution("blocking_factor")
-
-# View other metrics
-plot_metric_distribution("betweenness")
-plot_metric_distribution("delay_depth")
-plot_metric_distribution("structural_risk")
+**Data format**: CSV with columns `course_code`, `title`, `credits`, `year`, `prerequisites_formal` (comma-separated like `2IT60, 2IT80`)
 ```
 
 ## Configuring Elective Groups

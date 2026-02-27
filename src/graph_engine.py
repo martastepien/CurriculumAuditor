@@ -117,8 +117,7 @@ def normalize(metric_dict):
         for k, v in metric_dict.items()
     }
 
-
-#Aggregates normalized metrics into single structural risk score.
+\
 # Uses 3 non-redundant metrics: betweenness (bottlenecks), depth (delays), blocking (impact)
 def compute_structural_risk_score(G, weights=None):
 
@@ -127,9 +126,9 @@ def compute_structural_risk_score(G, weights=None):
 
     if weights is None:
         weights = {
-            "block": 0.4,   # Downstream credit impact
-            "bet": 0.3,     # Critical path position
-            "depth": 0.3    # Maximum delay potential
+            "block": 0.4,   # downstream credit impact
+            "bet": 0.3,     # Cxritical path position
+            "depth": 0.3    # max delay potential
         }
 
     metrics_raw = {
