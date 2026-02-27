@@ -119,6 +119,7 @@ def normalize(metric_dict):
 
 
 #Aggregates normalized metrics into single structural risk score.
+# Uses 3 non-redundant metrics: betweenness (bottlenecks), depth (delays), blocking (impact)
 def compute_structural_risk_score(G, weights=None):
 
     if not nx.is_directed_acyclic_graph(G):
@@ -126,19 +127,15 @@ def compute_structural_risk_score(G, weights=None):
 
     if weights is None:
         weights = {
-            "block": 0.3,
-            "bet": 0.2,
-            "page": 0.2,
-            "depth": 0.2,
-            "art": 0.1
+            "block": 0.4,   # Downstream credit impact
+            "bet": 0.3,     # Critical path position
+            "depth": 0.3    # Maximum delay potential
         }
 
     metrics_raw = {
         "block": compute_blocking_factor(G),
         "bet": nx.betweenness_centrality(G, normalized=True),
-        "page": nx.pagerank(G),
-        "depth": compute_longest_path_depth(G),
-        "art": compute_articulation_reach(G)
+        "depth": compute_longest_path_depth(G)
     }
 
     metrics = {

@@ -11,12 +11,10 @@ CurriculumAuditor analyzes course prerequisite structures to identify "bottlenec
 ## Features
 
 - **Graph-based curriculum modeling**: Converts course prerequisites into a DAG
-- **Multi-Metric risk analysis**:
-  - **Blocking factor**: Measures downstream courses affected by failure
-  - **Betweenness centrality**: Identifies courses on critical paths
-  - **PageRank**: Measures course importance in the dependency network
-  - **Delay depth**: Calculates longest path depth for progression delay
-  - **Articulation impact**: Assesses reachability loss if course is removed
+- **Three-metric risk analysis** (minimizes redundancy while maintaining interpretability):
+  - **Blocking factor**: Measures proportion of downstream credits affected by failure
+  - **Betweenness centrality**: Identifies courses on critical prerequisite paths (structural bottlenecks)
+  - **Delay depth**: Calculates longest path depth to quantify maximum graduation delays
 - **Elective group support**: Handles flexible course options (e.g., capstone choices)
 - **Visualization tools**: Charts for top risk courses and metric distributions
 
@@ -94,6 +92,7 @@ plot_metric_distribution("blocking_factor")
 # View other metrics
 plot_metric_distribution("betweenness")
 plot_metric_distribution("delay_depth")
+plot_metric_distribution("structural_risk")
 ```
 
 ## Configuring Elective Groups
@@ -114,16 +113,20 @@ The processed CSV contains:
 - `course_code`: Course identifier
 - `structural_risk`: Aggregated risk score (0-1, normalized)
 - `blocking_factor`: Proportion of downstream credits blocked
-- `betweenness`: Network centrality score
-- `pagerank`: Importance in prerequisite network
-- `delay_depth`: Longest path from this course
-- `articulation_impact`: Proportion of curriculum unreachable if removed
+- `betweenness`: Network centrality score (critical path position)
+- `delay_depth`: Longest path from this course (maximum delay potential)
 - `year`: Academic year
 
 ## Risk score calculation
+
+The risk score uses **three non-redundant metrics** based on research by Saqr & López-Pernas, which demonstrated that many graph metrics are highly correlated. This selection minimizes redundancy while maintaining distinct conceptual dimensions:
+
 Default weights (customizable in `compute_structural_risk_score()`):
-- Blocking Factor: 30%
-- Betweenness: 20%
-- PageRank: 20%
-- Delay Depth: 20%
-- Articulation Impact: 10%
+- **Blocking Factor: 40%** - Direct downstream credit impact
+- **Betweenness: 30%** - Critical path position (structural bottlenecks)
+- **Delay Depth: 30%** - Maximum delay potential for graduation
+
+Each metric captures a unique aspect of curricular risk:
+- **Blocking factor** → Volume of affected content (how much is blocked?)
+- **Betweenness** → Structural position (how critical is the path?)
+- **Delay depth** → Temporal impact (how long is the delay?)

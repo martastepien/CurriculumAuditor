@@ -54,9 +54,7 @@ def run_structural_pipeline():
             "structural_risk": round(risk_scores[node], 4),
             "blocking_factor": round(metrics["block"][node], 4),
             "betweenness": round(metrics["bet"][node], 4),
-            "pagerank": round(metrics["page"][node], 4),
             "delay_depth": round(metrics["depth"][node], 4),
-            "articulation_impact": round(metrics["art"][node], 4),
             "year": G.nodes[node]["year"]
         })
 
