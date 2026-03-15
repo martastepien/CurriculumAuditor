@@ -13,10 +13,15 @@ def load_and_build_dag(csv_path):
     G = nx.DiGraph()
 
     for _, row in df.iterrows():
+        # Handle multi-quarter courses (e.g., "1,2") by taking first quarter
+        quarter_str = str(row.get("quarter", "1"))
+        quarter = int(quarter_str.split(",")[0]) if "," in quarter_str else int(quarter_str)
+        
         G.add_node(
             row["course_code"],
             credits=float(row.get("credits", 5)),
-            year=row.get("year", 0)
+            year=int(row.get("year", 1)),
+            quarter=quarter
         )
 
     for _, row in df.iterrows():
@@ -54,8 +59,12 @@ def run_structural_pipeline():
             "structural_risk": round(risk_scores[node], 4),
             "blocking_factor": round(metrics["block"][node], 4),
             "betweenness": round(metrics["bet"][node], 4),
-            "delay_depth": round(metrics["depth"][node], 4),
-            "year": G.nodes[node]["year"]
+            "pagerank": round(metrics["pagerank"][node], 4),
+            "logical_depth": round(metrics["logical"][node], 4),
+            "temporal_criticality": round(metrics["temporal"][node], 4),
+            "articulation_impact": round(metrics["articulation"][node], 4),
+            "year": G.nodes[node]["year"],
+            "quarter": G.nodes[node]["quarter"]
         })
 
     df = pd.DataFrame(results).sort_values(

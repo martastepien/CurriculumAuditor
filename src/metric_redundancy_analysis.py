@@ -15,10 +15,15 @@ def compute_all_metrics(csv_path):
     
     # Build graph
     for _, row in df.iterrows():
+        # Handle multi-quarter courses (e.g., "1,2") by taking first quarter
+        quarter_str = str(row.get("quarter", "1"))
+        quarter = int(quarter_str.split(",")[0]) if "," in quarter_str else int(quarter_str)
+        
         G.add_node(
             row["course_code"],
             credits=float(row.get("credits", 5)),
-            year=row.get("year", 0)
+            year=int(row.get("year", 1)),
+            quarter=quarter
         )
     
     for _, row in df.iterrows():
@@ -36,13 +41,14 @@ def compute_all_metrics(csv_path):
     
     print(f"Graph built: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges\n")
     
-    # Compute ALL 5 metrics
-    print("Computing all 5 metrics...")
+    # Compute ALL 7 metrics (including both logical and temporal depth)
+    print("Computing all 7 metrics...")
     metrics_raw = {
         "blocking_factor": ge.compute_blocking_factor(G),
         "betweenness": nx.betweenness_centrality(G, normalized=True),
         "pagerank": nx.pagerank(G),
-        "delay_depth": ge.compute_longest_path_depth(G),
+        "logical_depth": ge.compute_longest_path_depth(G),
+        "temporal_criticality": ge.compute_temporal_criticality(G),
         "articulation_impact": ge.compute_articulation_reach(G)
     }
     
@@ -60,9 +66,11 @@ def compute_all_metrics(csv_path):
             "blocking_factor": metrics["blocking_factor"][node],
             "betweenness": metrics["betweenness"][node],
             "pagerank": metrics["pagerank"][node],
-            "delay_depth": metrics["delay_depth"][node],
+            "logical_depth": metrics["logical_depth"][node],
+            "temporal_criticality": metrics["temporal_criticality"][node],
             "articulation_impact": metrics["articulation_impact"][node],
-            "year": G.nodes[node]["year"]
+            "year": G.nodes[node]["year"],
+            "quarter": G.nodes[node]["quarter"]
         })
     
     return pd.DataFrame(results)
@@ -72,12 +80,12 @@ def analyze_correlations(df):
     """Analyze correlation matrix to identify redundant metrics"""
     
     metrics = ["blocking_factor", "betweenness", "pagerank", 
-               "delay_depth", "articulation_impact"]
+               "logical_depth", "temporal_criticality", "articulation_impact"]
     
     corr_matrix = df[metrics].corr()
     
     print("="*60)
-    print("CORRELATION MATRIX (All 5 Metrics)")
+    print("CORRELATION MATRIX (All 6 Metrics)")
     print("="*60)
     print(corr_matrix.round(4))
     print("\n")
@@ -94,7 +102,7 @@ def analyze_correlations(df):
                 corr_val = corr_matrix.loc[metric1, metric2]
                 if abs(corr_val) > 0.5:
                     redundant_pairs.append((metric1, metric2, corr_val))
-                    print(f"{metric1:20s} ↔ {metric2:20s}: {corr_val:7.4f}")
+                    print(f"{metric1:25s} ↔ {metric2:25s}: {corr_val:7.4f}")
     
     if not redundant_pairs:
         print("No high correlations found (all |r| < 0.5)")
@@ -103,13 +111,14 @@ def analyze_correlations(df):
     
     # Recommended metrics
     print("="*60)
-    print("RECOMMENDATION")
+    print("RECOMMENDATION: MULTIDIMENSIONAL RISK APPROACH")
     print("="*60)
     print("\nBased on correlation analysis:")
-    print("\n✓ KEEP (Low redundancy):")
-    print("  - Blocking Factor: Measures downstream credit impact")
-    print("  - Betweenness: Identifies critical path bottlenecks")
-    print("  - Delay Depth: Quantifies maximum graduation delay")
+    print("\n✓ KEEP (Low redundancy, distinct dimensions):")
+    print("  - Blocking Factor: Downstream credit impact")
+    print("  - Betweenness: Logical bottleneck position")
+    print("  - Logical Depth: Structural complexity (knowledge chain - unweighted hops)")
+    print("  - Temporal Criticality: Calendar fragility (graduation risk - weighted quarters)")
     
     print("\n✗ REMOVE (Redundant with other metrics):")
     if any("pagerank" in str(pair) for pair in redundant_pairs):
@@ -122,12 +131,17 @@ def analyze_correlations(df):
     else:
         print("  - Articulation Impact: Conceptually overlaps with blocking factor")
     
+    print("\n💡 KEY INSIGHT:")
+    print("  Keeping BOTH logical_depth and temporal_criticality allows identification")
+    print("  of 'hidden' temporal constraints - courses with low logical depth but")
+    print("  high temporal impact (e.g., late-year courses, annual-only offerings).")
+    
     print("\n")
     
     return corr_matrix
 
 
-def plot_correlation_heatmap(corr_matrix, title="All 5 Metrics"):
+def plot_correlation_heatmap(corr_matrix, title="All 6 Metrics"):
     """Create detailed correlation heatmap"""
     
     fig, ax = plt.subplots(figsize=(10, 8))
@@ -144,42 +158,42 @@ def plot_correlation_heatmap(corr_matrix, title="All 5 Metrics"):
     plt.show()
 
 
-def compare_3_vs_5_metrics(df):
-    """Compare correlation structure of 3-metric vs 5-metric approach"""
+def compare_4_vs_6_metrics(df):
+    """Compare correlation structure of 4-metric vs 6-metric approach"""
     
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
     
-    # 5-metric correlation
+    # 6-metric correlation
     all_metrics = ["blocking_factor", "betweenness", "pagerank", 
-                   "delay_depth", "articulation_impact"]
-    corr_5 = df[all_metrics].corr()
+                   "logical_depth", "temporal_criticality", "articulation_impact"]
+    corr_6 = df[all_metrics].corr()
     
-    sns.heatmap(corr_5, annot=True, fmt='.4f', cmap='coolwarm',
-                center=0, square=True, linewidths=1, ax=ax1, vmin=-1, vmax=1)
-    ax1.set_title('5 Metrics', fontsize=12, pad=10)
+    sns.heatmap(corr_6, annot=True, fmt='.3f', cmap='coolwarm',
+                center=0, square=True, linewidths=1, ax=ax1, vmin=-1, vmax=1, annot_kws={'fontsize': 9})
+    ax1.set_title('All 6 Metrics', fontsize=12, pad=10)
     
-    # 3-metric correlation
-    selected_metrics = ["blocking_factor", "betweenness", "delay_depth"]
-    corr_3 = df[selected_metrics].corr()
+    # 4-metric correlation (multidimensional approach)
+    selected_metrics = ["blocking_factor", "betweenness", "logical_depth", "temporal_criticality"]
+    corr_4 = df[selected_metrics].corr()
     
-    sns.heatmap(corr_3, annot=True, fmt='.4f', cmap='coolwarm',
+    sns.heatmap(corr_4, annot=True, fmt='.4f', cmap='coolwarm',
                 center=0, square=True, linewidths=1, ax=ax2, vmin=-1, vmax=1)
-    ax2.set_title('3 Selected Metrics', fontsize=12, pad=10)
+    ax2.set_title('4 Selected Metrics\n(Multidimensional Risk)', fontsize=12, pad=10)
     
-    plt.suptitle('Justification for 3-Metric Approach', fontsize=14, y=1.02)
+    plt.suptitle('Justification for Multidimensional Approach', fontsize=14, y=1.02)
     plt.tight_layout()
     plt.show()
     
     print("="*60)
     print("CORRELATION COMPARISON")
     print("="*60)
-    print(f"\n5-Metric Approach:")
-    print(f"  Average |correlation|: {corr_5.abs().mean().mean():.4f}")
-    print(f"  Max off-diagonal |correlation|: {corr_5.abs().where(~pd.np.eye(5, dtype=bool)).max().max():.4f}")
+    print(f"\n6-Metric Approach (All candidates):")
+    print(f"  Average |correlation|: {corr_6.abs().mean().mean():.4f}")
+    print(f"  Max off-diagonal |correlation|: {corr_6.abs().where(~np.eye(6, dtype=bool)).max().max():.4f}")
     
-    print(f"\n3-Metric Approach:")
-    print(f"  Average |correlation|: {corr_3.abs().mean().mean():.4f}")
-    print(f"  Max off-diagonal |correlation|: {corr_3.abs().where(~pd.np.eye(3, dtype=bool)).max().max():.4f}")
+    print(f"\n4-Metric Approach (Selected - Multidimensional):")
+    print(f"  Average |correlation|: {corr_4.abs().mean().mean():.4f}")
+    print(f"  Max off-diagonal |correlation|: {corr_4.abs().where(~np.eye(4, dtype=bool)).max().max():.4f}")
     print("\n✓ Lower correlations = less redundancy = better metric selection\n")
 
 
@@ -193,8 +207,9 @@ def run_full_analysis():
     print("="*60)
     print("STRUCTURAL RISK METRIC REDUNDANCY ANALYSIS")
     print("="*60)
-    print("\nThis analysis computes ALL 5 metrics to demonstrate why")
-    print("we select only 3 for the final model (following Saqr & López-Pernas)")
+    print("\nThis analysis computes ALL 6 metrics to demonstrate the")
+    print("multidimensional risk approach: combining logical complexity")
+    print("and temporal fragility to identify hidden structural constraints.")
     print("\n")
     
     # Compute all metrics
@@ -210,18 +225,23 @@ def run_full_analysis():
     # Visualizations
     print("Generating visualizations...\n")
     
-    print("1. Correlation Heatmap (All 5 Metrics)")
-    plot_correlation_heatmap(corr_matrix, "All 5 Metrics")
+    print("1. Correlation Heatmap (All 6 Metrics)")
+    plot_correlation_heatmap(corr_matrix, "All 6 Metrics")
     
-    print("2. 3-Metric vs 5-Metric Comparison")
-    compare_3_vs_5_metrics(df)
+    print("2. 4-Metric vs 6-Metric Comparison")
+    compare_4_vs_6_metrics(df)
     
     print("="*60)
     print("ANALYSIS COMPLETE")
     print("="*60)
-    print("\nConclusion: The 3-metric approach (blocking factor, betweenness,")
-    print("delay depth) minimizes redundancy while capturing distinct dimensions")
-    print("of structural risk in curriculum design.")
+    print("\nConclusion: The multidimensional 4-metric approach captures distinct")
+    print("dimensions of structural risk:")
+    print("  • Blocking Factor: Credit impact")
+    print("  • Betweenness: Logical bottlenecks")
+    print("  • Logical Depth: Knowledge complexity (unweighted hops)")
+    print("  • Temporal Criticality: Graduation risk (weighted quarters)")
+    print("\nKeeping BOTH depth metrics reveals 'hidden' temporal constraints:")
+    print("courses with low logical depth but high temporal impact.")
     print("="*60)
 
 
