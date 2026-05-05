@@ -14,13 +14,17 @@ def load_and_build_dag(csv_path):
 
     for _, row in df.iterrows():
         # Handle multi-quarter courses (e.g., "1,2") by taking first quarter
-        quarter_str = str(row.get("quarter", "1"))
+        quarter_str = str(row.get("quarter", "1")).strip()
+        if not quarter_str:
+            quarter_str = "1"
         quarter = int(quarter_str.split(",")[0]) if "," in quarter_str else int(quarter_str)
         
+        credits_raw = row.get("credits", 5)
+        year_raw    = row.get("year", 1)
         G.add_node(
             row["course_code"],
-            credits=float(row.get("credits", 5)),
-            year=int(row.get("year", 1)),
+            credits=float(credits_raw) if str(credits_raw).strip() else 5.0,
+            year=int(float(year_raw)) if str(year_raw).strip() else 1,
             quarter=quarter
         )
 

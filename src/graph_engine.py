@@ -171,7 +171,7 @@ def compute_structural_risk_score(G, weights=None, selected_metrics=None):
         raise ValueError("Structural risk requires a DAG.")
 
     if selected_metrics is None:
-        selected_metrics = ["block", "bet", "logical", "temporal"]
+        selected_metrics = ["block", "bet", "pagerank"]
 
     if weights is None:
         w = 1.0 / len(selected_metrics)
