@@ -53,7 +53,7 @@ def load_personal_curriculum():
     personal_df = pd.read_csv(personal_path)
     main_df     = pd.read_csv(main_path)
 
-    # Map elective placeholder slots (keyed by year/quarter) so we can display real course codes
+    # Map elective placeholder slots by year/quarter so we can display real course codes
     slots = defaultdict(list)
     for _, row in main_df.iterrows():
         code = str(row['course_code'])
@@ -94,6 +94,90 @@ def _best_metric_subset(corr_matrix, metrics, n):
         if score < best_score:
             best_score, best_subset = score, subset
     return list(best_subset), best_score
+
+
+# --- DAG plot ---
+
+Y_SPACING   = 3.0
+NODE_SPREAD = 0.5
+
+
+def _dag_layout(G):
+    slot_counts = defaultdict(int)
+    slot_index  = defaultdict(int)
+    for n in G.nodes():
+        slot_counts[(G.nodes[n]['year'], G.nodes[n]['quarter'])] += 1
+
+    pos = {}
+    for n in G.nodes():
+        year    = G.nodes[n]['year']
+        quarter = G.nodes[n]['quarter']
+        key     = (year, quarter)
+        idx     = slot_index[key]
+        slot_index[key] += 1
+        offset  = (idx - (slot_counts[key] - 1) / 2) * NODE_SPREAD
+        pos[n]  = (float(quarter), -year * Y_SPACING + offset)
+    return pos
+
+
+def _draw_dag_on_ax(G, ax, risk_map, title):
+    pos         = _dag_layout(G)
+    node_colors = [risk_map.get(n, 0.0) for n in G.nodes()]
+    cmap        = plt.cm.YlOrRd
+
+    nx.draw_networkx_nodes(G, pos, node_color=node_colors,
+                           cmap=cmap, vmin=0, vmax=1,
+                           node_size=600, alpha=0.9, ax=ax)
+    nx.draw_networkx_labels(G, pos, font_size=6, ax=ax)
+    nx.draw_networkx_edges(G, pos, arrows=True, arrowsize=12,
+                           edge_color='gray', alpha=0.6,
+                           connectionstyle='arc3,rad=0.1', ax=ax)
+
+    for year in range(1, 4):
+        ax.text(0.5, -year * Y_SPACING, f'Year {year}', fontsize=9,
+                fontweight='bold', va='center', color='gray')
+    for q in range(1, 5):
+        ax.text(q, -Y_SPACING * 0.5, f'Q{q}', fontsize=9,
+                fontweight='bold', ha='center', color='gray')
+
+    ax.set_xlim(0.4, 4.7)
+    ax.set_title(title, fontsize=12)
+    ax.axis('off')
+    return plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=1))
+
+
+def plot_dag():
+    DATA_PATH     = BASE_DIR / "data" / "raw" / "CSE_curriculum_data.csv"
+    PERSONAL_PATH = BASE_DIR / "data" / "raw" / "personal_CSE_curriculum.csv"
+
+    G_main = load_and_build_dag(DATA_PATH)
+
+    struct_df = load_structural_results()
+    risk_map_main = dict(zip(struct_df['course_code'], struct_df['structural_risk']))
+
+    has_personal = PERSONAL_PATH.exists()
+
+    if has_personal:
+        G_personal = load_and_build_dag(PERSONAL_PATH)
+        personal_risk_scores, _ = ge.compute_structural_risk_score(G_personal)
+        risk_map_personal = personal_risk_scores
+
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(22, 13),
+                                        gridspec_kw={'wspace': 0.15})
+        sm = _draw_dag_on_ax(G_main,     ax1, risk_map_main,     "Full curriculum DAG")
+        _draw_dag_on_ax(G_personal, ax2, risk_map_personal, "Personal curriculum DAG")
+        cbar_ax = fig.add_axes([0.92, 0.15, 0.015, 0.6])
+        fig.colorbar(sm, cax=cbar_ax, label='Structural risk')
+    else:
+        fig, ax = plt.subplots(figsize=(13, 13))
+        sm = _draw_dag_on_ax(G_main, ax, risk_map_main, "Full curriculum DAG")
+        cbar_ax = fig.add_axes([0.92, 0.15, 0.015, 0.6])
+        fig.colorbar(sm, cax=cbar_ax, label='Structural risk')
+
+    fig.suptitle("Curriculum DAG: nodes coloured by structural risk",
+                 fontsize=14, fontweight='bold')
+    plt.subplots_adjust(left=0.05, right=0.90, top=0.88, bottom=0.05)
+    plt.show()
 
 
 # --- structural plots ---
@@ -184,7 +268,7 @@ def plot_personal_curriculum_risk():
         mpatches.Patch(color='steelblue', label='Not in my curriculum'),
     ], fontsize=9)
 
-    # Panel 2: ALL personal courses ranked — includes electives at structural_risk=0
+    # Panel 2: all personal courses ranked, including electives which score 0
     ax2.barh(range(len(personal_df)), personal_df['structural_risk'], color='coral')
     ax2.set_yticks(range(len(personal_df)))
     ax2.set_yticklabels(personal_df['display_code'])
@@ -229,7 +313,7 @@ def plot_similarity_heatmap(sim_matrix, course_codes, df):
 
 
 def plot_divergence_scatter(divergence_df):
-    # Four quadrants split at medians — data-driven boundaries rather than arbitrary cutoffs
+    # Four quadrants split at medians, data-driven boundaries rather than fixed cutoffs
     df    = divergence_df.copy()
     x     = df['structural_risk']
     y     = df['semantic_centrality']
@@ -315,7 +399,7 @@ def plot_semantic_graph(hidden_deps, divergence_df, threshold):
 
 def plot_concept_clusters(embeddings, cluster_labels, course_codes, divergence_df, n_clusters=5):
     # PCA to 2D for visual inspection of thematic groupings.
-    # Node size scales with structural risk so high-risk courses stand out.
+    # Node size scales with structural risk so high-risk courses are easy to spot.
     pca   = PCA(n_components=2, random_state=RANDOM_SEED)
     coords = pca.fit_transform(embeddings)
     var_explained = sum(pca.explained_variance_ratio_) * 100
@@ -432,7 +516,7 @@ def plot_personal_empirical_risk():
     personal_df = pd.read_csv(personal_path)
     personal_df = personal_df[personal_df['course_code'].notna()].copy()
 
-    # Build personal DAG — picks up 2IC80's formal prereq (2IRR40) automatically
+    # Build personal DAG, picks up formal prerequisites automatically
     G_personal = load_and_build_dag(personal_path)
     risk_scores, _ = ge.compute_structural_risk_score(G_personal)
     risk_df = pd.DataFrame([
@@ -503,6 +587,9 @@ def plot_personal_empirical_risk():
 
 if __name__ == "__main__":
     print("CurriculumAuditor visualizations\n")
+
+    print("0. Curriculum DAG")
+    plot_dag()
 
     print("1. Top structural risk courses")
     plot_top_structural_risk(top_n=10)
