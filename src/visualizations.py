@@ -429,6 +429,34 @@ def plot_concept_clusters(embeddings, cluster_labels, course_codes, divergence_d
     plt.show()
 
 
+# --- semantic analysis plots (CSV-based) ---
+
+def plot_top_semantic_similarity(top_n=20):
+    dep_path = BASE_DIR / "data" / "processed" / "hidden_dependencies.csv"
+    if not dep_path.exists():
+        print("Hidden dependencies not found. Run semantic_analysis.py first.")
+        return
+
+    df = pd.read_csv(dep_path).sort_values('similarity_score', ascending=False).head(top_n)
+
+    labels = [
+        f"{row['source_course']} -> {row['target_course']}\n"
+        f"({row['source_year_quarter']} to {row['target_year_quarter']})"
+        for _, row in df.iterrows()
+    ]
+
+    _, ax = plt.subplots(figsize=(10, top_n * 0.45 + 1))
+    ax.barh(range(len(df)), df['similarity_score'], color='steelblue', alpha=0.85)
+    ax.set_yticks(range(len(df)))
+    ax.set_yticklabels(labels, fontsize=8)
+    ax.invert_yaxis()
+    ax.set_xlabel('Cosine similarity score')
+    ax.set_title(f'Top {top_n} semantically similar course pairs\n(hidden dependencies only, no formal prerequisite edge)')
+    ax.grid(axis='x', alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+
+
 # --- combined structural + semantic comparison plots (CSV-based) ---
 
 def plot_full_risk_comparison(top_n=15):
@@ -602,10 +630,13 @@ if __name__ == "__main__":
 
     sem_path = BASE_DIR / "data" / "processed" / "semantic_analysis.csv"
     if sem_path.exists():
-        print("\n4. Structural vs semantic dual ranking")
+        print("\n4. Top semantically similar course pairs")
+        plot_top_semantic_similarity()
+
+        print("\n5. Structural vs semantic dual ranking")
         plot_full_risk_comparison()
 
-        print("\n5. Augmented graph hidden bottlenecks")
+        print("\n6. Augmented graph hidden bottlenecks")
         plot_augmented_vs_original()
 
     print("\n6. Personal curriculum risk profile")

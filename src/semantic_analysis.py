@@ -21,16 +21,13 @@ RANDOM_SEED = 42
 
 class SemanticCurriculumAnalyzer:
     """
-    Detects hidden curricular dependencies using Sentence-BERT embeddings.
-    Courses with high semantic similarity but no formal prerequisite edge
+    Detects hidden curricular dependencies using Sentence-BERT embeddings. Courses with high semantic similarity but no formal prerequisite edge
     represent conceptual dependencies the graph doesn't document.
     """
-
     def __init__(self, csv_path, structural_csv_path, model_name='all-mpnet-base-v2'):
         self.csv_path = pathlib.Path(csv_path)
         self.structural_csv_path = pathlib.Path(structural_csv_path)
         self.model = SentenceTransformer(model_name)
-
         self.df = None
         self.embeddings = None
         self.course_codes = None
