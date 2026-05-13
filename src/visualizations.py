@@ -438,6 +438,7 @@ def plot_top_semantic_similarity(top_n=20):
         return
 
     df = pd.read_csv(dep_path).sort_values('similarity_score', ascending=False).head(top_n)
+    n_shown = len(df)
 
     labels = [
         f"{row['source_course']} -> {row['target_course']}\n"
@@ -445,13 +446,13 @@ def plot_top_semantic_similarity(top_n=20):
         for _, row in df.iterrows()
     ]
 
-    _, ax = plt.subplots(figsize=(10, top_n * 0.45 + 1))
-    ax.barh(range(len(df)), df['similarity_score'], color='steelblue', alpha=0.85)
-    ax.set_yticks(range(len(df)))
+    _, ax = plt.subplots(figsize=(10, n_shown * 0.45 + 1))
+    ax.barh(range(n_shown), df['similarity_score'], color='steelblue', alpha=0.85)
+    ax.set_yticks(range(n_shown))
     ax.set_yticklabels(labels, fontsize=8)
     ax.invert_yaxis()
     ax.set_xlabel('Cosine similarity score')
-    ax.set_title(f'Top {top_n} semantically similar course pairs\n(hidden dependencies only, no formal prerequisite edge)')
+    ax.set_title(f'All detected hidden semantic dependencies, ranked by similarity\n({n_shown} course pairs with no formal prerequisite edge)')
     ax.grid(axis='x', alpha=0.3)
     plt.tight_layout()
     plt.show()
@@ -531,6 +532,44 @@ def plot_augmented_vs_original(top_n=15):
         mpatches.Patch(color='crimson',   label='Hidden bottleneck (gained importance)'),
         mpatches.Patch(color='steelblue', label='Reduced importance'),
     ], fontsize=9)
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_personal_top_structural_risk(top_n=10):
+    personal_path = BASE_DIR / "data" / "raw" / "personal_CSE_curriculum.csv"
+    if not personal_path.exists():
+        print("Personal curriculum file not found. Skipping...")
+        return
+
+    # Official
+    struct_df = load_structural_results()
+    top_official = struct_df.sort_values('structural_risk', ascending=False).head(top_n)
+
+    # Personal
+    G_personal = load_and_build_dag(personal_path)
+    risk_scores, _ = ge.compute_structural_risk_score(G_personal)
+    top_personal = pd.DataFrame([
+        {'course_code': c, 'structural_risk': round(v, 4)}
+        for c, v in risk_scores.items()
+    ]).sort_values('structural_risk', ascending=False).head(top_n)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+
+    ax1.bar(top_official['course_code'], top_official['structural_risk'])
+    ax1.set_xticks(range(len(top_official)))
+    ax1.set_xticklabels(top_official['course_code'], rotation=45, ha='right')
+    ax1.set_ylabel('Structural risk')
+    ax1.set_title(f'Top {top_n}: official curriculum')
+
+    ax2.bar(top_personal['course_code'], top_personal['structural_risk'], color='coral')
+    ax2.set_xticks(range(len(top_personal)))
+    ax2.set_xticklabels(top_personal['course_code'], rotation=45, ha='right')
+    ax2.set_ylabel('Structural risk')
+    ax2.set_title(f'Top {top_n}: personal curriculum')
+
+    plt.suptitle('Top structural risk courses: official vs personal curriculum',
+                 fontsize=13, fontweight='bold')
     plt.tight_layout()
     plt.show()
 
