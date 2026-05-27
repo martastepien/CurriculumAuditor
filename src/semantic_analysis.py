@@ -24,10 +24,10 @@ class SemanticCurriculumAnalyzer:
     Detects hidden curricular dependencies using Sentence-BERT embeddings. Courses with high semantic similarity but no formal prerequisite edge
     represent conceptual dependencies the graph doesn't document.
     """
-    def __init__(self, csv_path, structural_csv_path, model_name='all-mpnet-base-v2'):
+    def __init__(self, csv_path, structural_csv_path, model_name='all-mpnet-base-v2', model=None):
         self.csv_path = pathlib.Path(csv_path)
         self.structural_csv_path = pathlib.Path(structural_csv_path)
-        self.model = SentenceTransformer(model_name)
+        self.model = model if model is not None else SentenceTransformer(model_name)
         self.df = None
         self.embeddings = None
         self.course_codes = None
@@ -42,7 +42,8 @@ class SemanticCurriculumAnalyzer:
     def load_and_encode(self):
         df = pd.read_csv(self.csv_path).fillna("")
 
-        # Elective placeholders have no real content — skip them
+        # Elective placeholders and empty rows have no real content — skip them
+        df = df[df['course_code'].notna() & (df['course_code'].str.strip() != "")].copy()
         df = df[~df['course_code'].str.contains("Elective", na=False)].copy()
         df = df.reset_index(drop=True)
 
@@ -147,8 +148,9 @@ class SemanticCurriculumAnalyzer:
         self.semantic_centrality = ge.normalize(raw_centrality)
         return self.semantic_centrality
 
-    def compute_divergence(self):
-        structural_df = pd.read_csv(self.structural_csv_path)
+    def compute_divergence(self, structural_df=None):
+        if structural_df is None:
+            structural_df = pd.read_csv(self.structural_csv_path)
 
         rows = [
             {'course_code': code, 'semantic_centrality': round(self.semantic_centrality[code], 4)}
@@ -302,13 +304,68 @@ class SemanticCurriculumAnalyzer:
         ].to_string(index=False))
 
 
+def run_personal_semantic_pipeline(personal_csv_path, reuse_model, output_dir):
+    """
+    Runs the semantic hidden-dependency pipeline on the personal curriculum,
+    reusing an already-loaded SBERT model to avoid a second heavy model load.
+    Uses the personal DAG's own structural risk scores for divergence computation.
+    Returns the SemanticCurriculumAnalyzer instance.
+    """
+    personal_csv_path = pathlib.Path(personal_csv_path)
+    output_dir = pathlib.Path(output_dir)
+
+    print("\n" + "=" * 60)
+    print("PERSONAL CURRICULUM SEMANTIC PIPELINE")
+    print("=" * 60)
+
+    # Build personal DAG and compute structural risk on that subset
+    G_personal = load_and_build_dag(personal_csv_path)
+    personal_risk_scores, _ = ge.compute_structural_risk_score(G_personal)
+    personal_struct_df = pd.DataFrame([
+        {'course_code': c, 'structural_risk': round(v, 4)}
+        for c, v in personal_risk_scores.items()
+    ])
+
+    # Reuse model — no second 420MB load
+    analyzer = SemanticCurriculumAnalyzer(
+        personal_csv_path,
+        structural_csv_path=personal_csv_path,  # not read from disk; overridden below
+        model=reuse_model
+    )
+
+    print("\n[1/4] Loading and encoding personal courses...")
+    analyzer.load_and_encode()
+
+    print("\n[2/4] Computing similarity matrix...")
+    analyzer.compute_similarity_matrix()
+
+    print("\n[3/4] Detecting hidden dependencies...")
+    analyzer.detect_hidden_dependencies()
+
+    print("\n[4/4] Computing semantic centrality and divergence...")
+    analyzer.compute_semantic_centrality()
+    analyzer.compute_divergence(structural_df=personal_struct_df)
+
+    analyzer.hidden_deps.to_csv(output_dir / "hidden_dependencies_personal.csv", index=False)
+    analyzer.divergence_df.to_csv(output_dir / "semantic_analysis_personal.csv", index=False)
+    print(f"\nSaved personal semantic outputs to {output_dir}/")
+
+    return analyzer
+
+
 if __name__ == "__main__":
     CSV_PATH        = BASE_DIR / "data" / "raw" / "CSE_curriculum_data.csv"
     STRUCTURAL_PATH = BASE_DIR / "data" / "processed" / "structural_risk_baseline.csv"
+    PERSONAL_PATH   = BASE_DIR / "data" / "raw" / "personal_CSE_curriculum.csv"
+    OUTPUT_DIR      = BASE_DIR / "data" / "processed"
 
     analyzer = SemanticCurriculumAnalyzer(CSV_PATH, STRUCTURAL_PATH)
     analyzer.run_pipeline()
     analyzer.run_concept_cluster_analysis(n_clusters=5)
+
+    personal_analyzer = None
+    if PERSONAL_PATH.exists():
+        personal_analyzer = run_personal_semantic_pipeline(PERSONAL_PATH, analyzer.model, OUTPUT_DIR)
 
     print("\nGenerating visualizations...")
     from visualizations import (
@@ -316,10 +373,17 @@ if __name__ == "__main__":
         plot_divergence_scatter,
         plot_semantic_graph,
         plot_concept_clusters,
+        plot_personal_semantic_graph,
     )
     plot_similarity_heatmap(analyzer.sim_matrix, analyzer.course_codes, analyzer.df)
     plot_divergence_scatter(analyzer.divergence_df)
     plot_semantic_graph(analyzer.hidden_deps, analyzer.divergence_df, analyzer.threshold)
     plot_concept_clusters(analyzer.embeddings, analyzer.cluster_labels, analyzer.course_codes, analyzer.divergence_df)
+
+    if personal_analyzer is not None:
+        plot_personal_semantic_graph(
+            analyzer.hidden_deps, analyzer.divergence_df, analyzer.threshold,
+            personal_analyzer.hidden_deps, personal_analyzer.divergence_df, personal_analyzer.threshold,
+        )
 
     print("\nSemantic analysis complete.")

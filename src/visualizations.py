@@ -362,11 +362,7 @@ def plot_divergence_scatter(divergence_df):
     plt.show()
 
 
-def plot_semantic_graph(hidden_deps, divergence_df, threshold):
-    if hidden_deps is None or len(hidden_deps) == 0:
-        print("No hidden dependencies to plot.")
-        return
-
+def _draw_hidden_dep_graph(hidden_deps, divergence_df, ax, title, threshold):
     G = nx.DiGraph()
     for _, row in hidden_deps.iterrows():
         G.add_edge(row['source_course'], row['target_course'], weight=row['normalized_weight'])
@@ -376,24 +372,54 @@ def plot_semantic_graph(hidden_deps, divergence_df, threshold):
     node_colors = ['crimson' if div_lookup.get(n, 0) > 0 else 'steelblue' for n in G.nodes()]
     edge_widths = [G[u][v]['weight'] * 3 for u, v in G.edges()]
 
-    fig, ax = plt.subplots(figsize=(13, 10))
     pos = nx.spring_layout(G, seed=RANDOM_SEED, k=2.0)
-
     nx.draw_networkx_nodes(G, pos, node_size=node_sizes, node_color=node_colors, alpha=0.85, ax=ax)
     nx.draw_networkx_labels(G, pos, font_size=8, ax=ax)
     nx.draw_networkx_edges(G, pos, width=edge_widths, alpha=0.55, edge_color='gray',
                            arrows=True, arrowsize=15, connectionstyle='arc3,rad=0.1', ax=ax)
 
+    ax.set_title(f"{title}\n(threshold = {threshold:.3f}, {len(hidden_deps)} edges)", fontsize=11)
+    ax.axis('off')
+
+
+def plot_semantic_graph(hidden_deps, divergence_df, threshold):
+    if hidden_deps is None or len(hidden_deps) == 0:
+        print("No hidden dependencies to plot.")
+        return
+
+    fig, ax = plt.subplots(figsize=(13, 10))
+    _draw_hidden_dep_graph(hidden_deps, divergence_df, ax, "Hidden semantic dependency graph", threshold)
+
     ax.legend(handles=[
         mpatches.Patch(color='crimson',   label='Positive divergence (hidden constraint)'),
         mpatches.Patch(color='steelblue', label='Negative divergence'),
     ], fontsize=9)
-    ax.set_title(
-        f"Hidden semantic dependency graph\n(threshold = {threshold:.3f}, {len(hidden_deps)} edges)",
-        fontsize=12
-    )
-    ax.axis('off')
     plt.tight_layout()
+    plt.show()
+
+
+def plot_personal_semantic_graph(
+    official_hidden_deps, official_divergence_df, official_threshold,
+    personal_hidden_deps, personal_divergence_df, personal_threshold,
+):
+    if official_hidden_deps is None or personal_hidden_deps is None:
+        print("Missing hidden dependency data. Skipping personal semantic graph.")
+        return
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(22, 10))
+
+    _draw_hidden_dep_graph(official_hidden_deps, official_divergence_df,
+                           ax1, "Official curriculum", official_threshold)
+    _draw_hidden_dep_graph(personal_hidden_deps, personal_divergence_df,
+                           ax2, "Personal curriculum", personal_threshold)
+
+    fig.legend(handles=[
+        mpatches.Patch(color='crimson',   label='Positive divergence (hidden constraint)'),
+        mpatches.Patch(color='steelblue', label='Negative divergence'),
+    ], loc='lower center', ncol=2, fontsize=10)
+    plt.suptitle("Hidden semantic dependency graph: official vs personal curriculum",
+                 fontsize=13, fontweight='bold')
+    plt.tight_layout(rect=[0, 0.05, 1, 1])
     plt.show()
 
 
@@ -455,6 +481,52 @@ def plot_top_semantic_similarity(top_n=20):
     ax.set_title(f'All detected hidden semantic dependencies, ranked by similarity\n({n_shown} course pairs with no formal prerequisite edge)')
     ax.grid(axis='x', alpha=0.3)
     plt.tight_layout()
+    plt.show()
+
+
+def plot_personal_top_hidden_deps(top_n=15):
+    official_path = BASE_DIR / "data" / "processed" / "hidden_dependencies.csv"
+    personal_path = BASE_DIR / "data" / "processed" / "hidden_dependencies_personal.csv"
+
+    if not official_path.exists():
+        print("Official hidden dependencies not found. Run semantic_analysis.py first.")
+        return
+    if not personal_path.exists():
+        print("Personal hidden dependencies not found. Run semantic_analysis.py first.")
+        return
+
+    def make_labels(df):
+        return [
+            f"{row['source_course']} → {row['target_course']}\n"
+            f"({row['source_year_quarter']} to {row['target_year_quarter']})"
+            for _, row in df.iterrows()
+        ]
+
+    official_df = pd.read_csv(official_path).sort_values('similarity_score', ascending=False).head(top_n)
+    personal_df = pd.read_csv(personal_path).sort_values('similarity_score', ascending=False).head(top_n)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(26, max(len(official_df), len(personal_df)) * 0.45 + 2))
+
+    ax1.barh(range(len(official_df)), official_df['similarity_score'], color='steelblue', alpha=0.85)
+    ax1.set_yticks(range(len(official_df)))
+    ax1.set_yticklabels(make_labels(official_df), fontsize=8)
+    ax1.invert_yaxis()
+    ax1.set_xlabel('Cosine similarity')
+    ax1.set_title(f'Official curriculum (top {len(official_df)} hidden dependencies)')
+    ax1.grid(axis='x', alpha=0.3)
+
+    ax2.barh(range(len(personal_df)), personal_df['similarity_score'], color='coral', alpha=0.85)
+    ax2.set_yticks(range(len(personal_df)))
+    ax2.set_yticklabels(make_labels(personal_df), fontsize=8)
+    ax2.invert_yaxis()
+    ax2.set_xlabel('Cosine similarity')
+    ax2.set_title(f'Personal curriculum (top {len(personal_df)} hidden dependencies)')
+    ax2.grid(axis='x', alpha=0.3)
+
+    plt.suptitle('Hidden semantic dependencies: official vs personal curriculum',
+                 fontsize=13, fontweight='bold')
+    plt.tight_layout()
+    plt.subplots_adjust(wspace=0.6)
     plt.show()
 
 
@@ -575,110 +647,57 @@ def plot_personal_top_structural_risk(top_n=10):
 
 
 def plot_personal_empirical_risk():
-    personal_path = BASE_DIR / "data" / "raw" / "personal_CSE_curriculum.csv"
-    if not personal_path.exists():
-        print("Personal curriculum file not found. Skipping...")
+    official_path = BASE_DIR / "data" / "processed" / "semantic_analysis.csv"
+    personal_path = BASE_DIR / "data" / "processed" / "semantic_analysis_personal.csv"
+
+    if not official_path.exists() or not personal_path.exists():
+        print("Semantic analysis files not found. Run semantic_analysis.py first.")
         return
 
+    official_df = pd.read_csv(official_path)
     personal_df = pd.read_csv(personal_path)
-    personal_df = personal_df[personal_df['course_code'].notna()].copy()
 
-    # Build personal DAG, picks up formal prerequisites automatically
-    G_personal = load_and_build_dag(personal_path)
-    risk_scores, _ = ge.compute_structural_risk_score(G_personal)
-    risk_df = pd.DataFrame([
-        {'course_code': c, 'personal_structural_risk': round(v, 4)}
-        for c, v in risk_scores.items()
-    ])
+    official_codes = set(official_df['course_code'])
+    personal_codes = set(personal_df['course_code'])
 
-    merged = personal_df[['course_code', 'pass_rate_2024', 'is_elective']].merge(
-        risk_df, on='course_code', how='left'
+    all_df = pd.concat([official_df, personal_df]).drop_duplicates(subset='course_code')
+    all_df['group'] = all_df['course_code'].apply(
+        lambda c: 'both' if c in official_codes and c in personal_codes
+        else ('official_only' if c in official_codes else 'personal_only')
     )
-    merged['personal_structural_risk'] = merged['personal_structural_risk'].fillna(0.0)
-    merged = merged.dropna(subset=['pass_rate_2024'])
-    merged['empirical_difficulty'] = 1 - merged['pass_rate_2024']
 
-    mandatory = merged[merged['is_elective'] == False]
-    electives  = merged[merged['is_elective'] == True]
+    x_mid = official_df['structural_risk'].median()
+    y_mid = official_df['semantic_centrality'].median()
 
-    x_mid = mandatory['personal_structural_risk'].median()
-    y_mid = mandatory['empirical_difficulty'].median()
+    group_styles = {
+        'official_only': ('lightgray',  'Official only'),
+        'both':          ('steelblue',  'In both curricula'),
+        'personal_only': ('coral',      'Personal only'),
+    }
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 7))
+    fig, ax = plt.subplots(figsize=(11, 8))
 
-    # Panel 1: scatter
-    ax1.scatter(mandatory['personal_structural_risk'], mandatory['empirical_difficulty'],
-                color='steelblue', s=80, alpha=0.85, zorder=3, label='Mandatory')
-    ax1.scatter(electives['personal_structural_risk'], electives['empirical_difficulty'],
-                color='coral', s=80, alpha=0.85, zorder=3, label='Elective')
+    for group, (color, label) in group_styles.items():
+        subset = all_df[all_df['group'] == group]
+        ax.scatter(subset['structural_risk'], subset['semantic_centrality'],
+                   color=color, s=75, alpha=0.85, zorder=3, label=label)
 
-    for _, row in merged.iterrows():
-        ax1.annotate(row['course_code'],
-                     (row['personal_structural_risk'], row['empirical_difficulty']),
-                     textcoords='offset points', xytext=(5, 3), fontsize=7, alpha=0.85)
+    for _, row in all_df.iterrows():
+        ax.annotate(row['course_code'],
+                    (row['structural_risk'], row['semantic_centrality']),
+                    textcoords='offset points', xytext=(5, 4), fontsize=6.5, color='#333333')
 
-    ax1.axvline(x_mid, color='gray', linestyle='--', alpha=0.5, linewidth=1)
-    ax1.axhline(y_mid, color='gray', linestyle='--', alpha=0.5, linewidth=1)
+    ax.axvline(x_mid, color='gray', linestyle='--', alpha=0.4, linewidth=0.9)
+    ax.axhline(y_mid, color='gray', linestyle='--', alpha=0.4, linewidth=0.9)
 
-    pad_x, pad_y = x_mid * 0.05, 0.01
-    ax1.text(x_mid + pad_x, y_mid + pad_y, "Doubly risky",        fontsize=8, color='crimson',     alpha=0.7)
-    ax1.text(pad_x,          y_mid + pad_y, "Hard but isolated",   fontsize=8, color='darkorange',  alpha=0.7)
-    ax1.text(x_mid + pad_x, pad_y,          "Structurally risky\nbut passable", fontsize=8, color='forestgreen', alpha=0.7)
-    ax1.text(pad_x,          pad_y,          "Low risk",            fontsize=8, color='steelblue',  alpha=0.7)
-
-    ax1.legend(fontsize=9)
-    ax1.set_xlabel("Personal structural risk", fontsize=11)
-    ax1.set_ylabel("Empirical difficulty (1 - pass rate)", fontsize=11)
-    ax1.set_title("Structural vs empirical risk: personal curriculum", fontsize=12)
-    ax1.grid(alpha=0.2)
-
-    # Panel 2: elective pass rates vs mandatory mean
-    mandatory_mean = mandatory['pass_rate_2024'].mean()
-    electives_sorted = electives.sort_values('pass_rate_2024')
-    colors = ['crimson' if v < mandatory_mean else 'steelblue' for v in electives_sorted['pass_rate_2024']]
-
-    ax2.barh(range(len(electives_sorted)), electives_sorted['pass_rate_2024'], color=colors)
-    ax2.set_yticks(range(len(electives_sorted)))
-    ax2.set_yticklabels(electives_sorted['course_code'])
-    ax2.axvline(mandatory_mean, color='black', linestyle='--', linewidth=1.2,
-                label=f'Mandatory mean ({mandatory_mean:.2f})')
-    ax2.set_xlabel("Pass rate 2024", fontsize=11)
-    ax2.set_title("Elective pass rates vs mandatory average", fontsize=12)
-    ax2.legend(fontsize=9)
-    ax2.grid(axis='x', alpha=0.3)
-
-    plt.suptitle("Personal curriculum risk profile", fontsize=14, fontweight='bold')
+    ax.legend(fontsize=9)
+    ax.set_xlabel("Structural risk", fontsize=10)
+    ax.set_ylabel("Semantic centrality", fontsize=10)
+    ax.set_title("Structural risk vs semantic centrality: official vs personal curriculum", fontsize=12)
+    ax.grid(alpha=0.15)
     plt.tight_layout()
     plt.show()
 
 
 if __name__ == "__main__":
-    print("CurriculumAuditor visualizations\n")
-
-    print("0. Curriculum DAG")
-    plot_dag()
-
-    print("1. Top structural risk courses")
-    plot_top_structural_risk(top_n=10)
-
-    print("\n2. Metric correlation analysis")
-    plot_metric_correlations(n_select=3)
-
-    print("\n3. My curriculum risk analysis")
-    plot_personal_curriculum_risk()
-
-    sem_path = BASE_DIR / "data" / "processed" / "semantic_analysis.csv"
-    if sem_path.exists():
-        print("\n4. Top semantically similar course pairs")
-        plot_top_semantic_similarity()
-
-        print("\n5. Structural vs semantic dual ranking")
-        plot_full_risk_comparison()
-
-        print("\n6. Augmented graph hidden bottlenecks")
-        plot_augmented_vs_original()
-
-    print("\n6. Personal curriculum risk profile")
     plot_personal_empirical_risk()
-
-    print("\nAll visualizations complete!")
