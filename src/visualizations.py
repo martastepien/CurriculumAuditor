@@ -98,8 +98,9 @@ def _best_metric_subset(corr_matrix, metrics, n):
 
 # --- DAG plot ---
 
-Y_SPACING   = 3.0
-NODE_SPREAD = 0.5
+COL_GAP     = 6.0
+ROW_GAP     = 14.0
+NODE_SPREAD = 3.0
 
 
 def _dag_layout(G):
@@ -113,37 +114,61 @@ def _dag_layout(G):
         year    = G.nodes[n]['year']
         quarter = G.nodes[n]['quarter']
         key     = (year, quarter)
+        count   = slot_counts[key]
         idx     = slot_index[key]
         slot_index[key] += 1
-        offset  = (idx - (slot_counts[key] - 1) / 2) * NODE_SPREAD
-        pos[n]  = (float(quarter), -year * Y_SPACING + offset)
+        x = float(quarter) * COL_GAP
+        y = -year * ROW_GAP + (idx - (count - 1) / 2) * NODE_SPREAD
+        pos[n] = (x, y)
     return pos
 
 
-def _draw_dag_on_ax(G, ax, risk_map, title):
-    pos         = _dag_layout(G)
-    node_colors = [risk_map.get(n, 0.0) for n in G.nodes()]
-    cmap        = plt.cm.YlOrRd
+def _draw_dag_on_ax(G, ax, title):
+    pos = _dag_layout(G)
 
-    nx.draw_networkx_nodes(G, pos, node_color=node_colors,
-                           cmap=cmap, vmin=0, vmax=1,
-                           node_size=600, alpha=0.9, ax=ax)
-    nx.draw_networkx_labels(G, pos, font_size=6, ax=ax)
-    nx.draw_networkx_edges(G, pos, arrows=True, arrowsize=12,
-                           edge_color='gray', alpha=0.6,
-                           connectionstyle='arc3,rad=0.1', ax=ax)
+    # Draw edges first so ellipses render on top and hide the endpoints cleanly
+    edge_styles = []
+    for u, v in G.edges():
+        if abs(pos[u][0] - pos[v][0]) < 1.0:
+            edge_styles.append('arc3,rad=0.25')
+        else:
+            edge_styles.append('arc3,rad=0.08')
 
-    for year in range(1, 4):
-        ax.text(0.5, -year * Y_SPACING, f'Year {year}', fontsize=9,
-                fontweight='bold', va='center', color='gray')
+    for (u, v), cstyle in zip(G.edges(), edge_styles):
+        nx.draw_networkx_edges(G, pos, edgelist=[(u, v)], arrows=True,
+                               arrowstyle='-|>', arrowsize=18,
+                               edge_color='#555555', alpha=0.6, width=1.4,
+                               connectionstyle=cstyle,
+                               min_source_margin=0, min_target_margin=4,
+                               ax=ax)
+
+    display_labels = {n: 'Elective' if 'Elective' in n else n for n in G.nodes()}
+    for node, label in display_labels.items():
+        x, y = pos[node]
+        ax.text(x, y, label, fontsize=13, fontweight='bold',
+                color='#1a2e45', ha='center', va='center', zorder=3,
+                bbox=dict(boxstyle='round,pad=0.4', facecolor='#d6e8f7',
+                          edgecolor='#2c5f8a', linewidth=1.5, alpha=0.95))
+
+    years = sorted({G.nodes[n]['year'] for n in G.nodes()})
+    for i in range(len(years) - 1):
+        sep_y = -(years[i] + years[i + 1]) / 2 * ROW_GAP
+        ax.axhline(sep_y, xmin=0.02, xmax=0.98, color='#cccccc',
+                   linestyle='--', linewidth=1.0, zorder=0)
+    for year in years:
+        ax.text(COL_GAP * 0.35, -year * ROW_GAP, f'Year {year}', fontsize=12,
+                fontweight='bold', va='center', color='#666666')
+    bottom_y = -max(years) * ROW_GAP - ROW_GAP * 0.7
     for q in range(1, 5):
-        ax.text(q, -Y_SPACING * 0.5, f'Q{q}', fontsize=9,
-                fontweight='bold', ha='center', color='gray')
+        ax.text(q * COL_GAP, bottom_y, f'Q{q}', fontsize=11,
+                fontweight='bold', ha='center', color='#777777')
 
-    ax.set_xlim(0.4, 4.7)
-    ax.set_title(title, fontsize=12)
+    x_vals = [p[0] for p in pos.values()]
+    y_vals = [p[1] for p in pos.values()]
+    ax.set_xlim(min(x_vals) - 2.5, max(x_vals) + 2.5)
+    ax.set_ylim(min(y_vals) - 2.5, max(y_vals) + 2.5)
+    ax.set_title(title, fontsize=13, fontweight='bold', pad=12)
     ax.axis('off')
-    return plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=1))
 
 
 def plot_dag():
@@ -152,32 +177,17 @@ def plot_dag():
 
     G_main = load_and_build_dag(DATA_PATH)
 
-    struct_df = load_structural_results()
-    risk_map_main = dict(zip(struct_df['course_code'], struct_df['structural_risk']))
-
-    has_personal = PERSONAL_PATH.exists()
-
-    if has_personal:
-        G_personal = load_and_build_dag(PERSONAL_PATH)
-        personal_risk_scores, _ = ge.compute_structural_risk_score(G_personal)
-        risk_map_personal = personal_risk_scores
-
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(22, 13),
-                                        gridspec_kw={'wspace': 0.15})
-        sm = _draw_dag_on_ax(G_main,     ax1, risk_map_main,     "Full curriculum DAG")
-        _draw_dag_on_ax(G_personal, ax2, risk_map_personal, "Personal curriculum DAG")
-        cbar_ax = fig.add_axes([0.92, 0.15, 0.015, 0.6])
-        fig.colorbar(sm, cax=cbar_ax, label='Structural risk')
-    else:
-        fig, ax = plt.subplots(figsize=(13, 13))
-        sm = _draw_dag_on_ax(G_main, ax, risk_map_main, "Full curriculum DAG")
-        cbar_ax = fig.add_axes([0.92, 0.15, 0.015, 0.6])
-        fig.colorbar(sm, cax=cbar_ax, label='Structural risk')
-
-    fig.suptitle("Curriculum DAG: nodes coloured by structural risk",
-                 fontsize=14, fontweight='bold')
-    plt.subplots_adjust(left=0.05, right=0.90, top=0.88, bottom=0.05)
+    fig1, ax1 = plt.subplots(figsize=(20, 22))
+    _draw_dag_on_ax(G_main, ax1, "Official Curriculum DAG - prerequisite relationships")
+    plt.subplots_adjust(left=0.03, right=0.97, top=0.95, bottom=0.03)
     plt.show()
+
+    if PERSONAL_PATH.exists():
+        G_personal = load_and_build_dag(PERSONAL_PATH)
+        fig2, ax2 = plt.subplots(figsize=(20, 22))
+        _draw_dag_on_ax(G_personal, ax2, "Personal Curriculum DAG - prerequisite relationships")
+        plt.subplots_adjust(left=0.03, right=0.97, top=0.95, bottom=0.03)
+        plt.show()
 
 
 # --- structural plots ---
@@ -368,17 +378,17 @@ def _draw_hidden_dep_graph(hidden_deps, divergence_df, ax, title, threshold):
         G.add_edge(row['source_course'], row['target_course'], weight=row['normalized_weight'])
 
     div_lookup  = dict(zip(divergence_df['course_code'], divergence_df['divergence_score']))
-    node_sizes  = [200 + div_lookup.get(n, 0) * 800 for n in G.nodes()]
+    node_sizes  = [4000 + div_lookup.get(n, 0) * 4000 for n in G.nodes()]
     node_colors = ['crimson' if div_lookup.get(n, 0) > 0 else 'steelblue' for n in G.nodes()]
-    edge_widths = [G[u][v]['weight'] * 3 for u, v in G.edges()]
+    edge_widths = [G[u][v]['weight'] * 8 for u, v in G.edges()]
 
-    pos = nx.spring_layout(G, seed=RANDOM_SEED, k=2.0)
+    pos = nx.spring_layout(G, seed=RANDOM_SEED, k=3.5)
     nx.draw_networkx_nodes(G, pos, node_size=node_sizes, node_color=node_colors, alpha=0.85, ax=ax)
-    nx.draw_networkx_labels(G, pos, font_size=8, ax=ax)
+    nx.draw_networkx_labels(G, pos, font_size=22, font_weight='bold', ax=ax)
     nx.draw_networkx_edges(G, pos, width=edge_widths, alpha=0.55, edge_color='gray',
-                           arrows=True, arrowsize=15, connectionstyle='arc3,rad=0.1', ax=ax)
+                           arrows=True, arrowsize=20, connectionstyle='arc3,rad=0.1', ax=ax)
 
-    ax.set_title(f"{title}\n(threshold = {threshold:.3f}, {len(hidden_deps)} edges)", fontsize=11)
+    ax.set_title(f"{title}\n(threshold = {threshold:.3f}, {len(hidden_deps)} edges)", fontsize=20)
     ax.axis('off')
 
 
@@ -387,13 +397,13 @@ def plot_semantic_graph(hidden_deps, divergence_df, threshold):
         print("No hidden dependencies to plot.")
         return
 
-    fig, ax = plt.subplots(figsize=(13, 10))
+    fig, ax = plt.subplots(figsize=(18, 14))
     _draw_hidden_dep_graph(hidden_deps, divergence_df, ax, "Hidden semantic dependency graph", threshold)
 
     ax.legend(handles=[
         mpatches.Patch(color='crimson',   label='Positive divergence (hidden constraint)'),
         mpatches.Patch(color='steelblue', label='Negative divergence'),
-    ], fontsize=9)
+    ], fontsize=12)
     plt.tight_layout()
     plt.show()
 
@@ -406,7 +416,7 @@ def plot_personal_semantic_graph(
         print("Missing hidden dependency data. Skipping personal semantic graph.")
         return
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(22, 10))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(32, 16))
 
     _draw_hidden_dep_graph(official_hidden_deps, official_divergence_df,
                            ax1, "Official curriculum", official_threshold)
@@ -416,9 +426,9 @@ def plot_personal_semantic_graph(
     fig.legend(handles=[
         mpatches.Patch(color='crimson',   label='Positive divergence (hidden constraint)'),
         mpatches.Patch(color='steelblue', label='Negative divergence'),
-    ], loc='lower center', ncol=2, fontsize=10)
+    ], loc='lower center', ncol=2, fontsize=18)
     plt.suptitle("Hidden semantic dependency graph: official vs personal curriculum",
-                 fontsize=13, fontweight='bold')
+                 fontsize=26, fontweight='bold')
     plt.tight_layout(rect=[0, 0.05, 1, 1])
     plt.show()
 
@@ -487,6 +497,7 @@ def plot_top_semantic_similarity(top_n=20):
 def plot_personal_top_hidden_deps(top_n=15):
     official_path = BASE_DIR / "data" / "processed" / "hidden_dependencies.csv"
     personal_path = BASE_DIR / "data" / "processed" / "hidden_dependencies_personal.csv"
+    personal_curriculum_path = BASE_DIR / "data" / "raw" / "personal_CSE_curriculum.csv"
 
     if not official_path.exists():
         print("Official hidden dependencies not found. Run semantic_analysis.py first.")
@@ -494,6 +505,28 @@ def plot_personal_top_hidden_deps(top_n=15):
     if not personal_path.exists():
         print("Personal hidden dependencies not found. Run semantic_analysis.py first.")
         return
+    if not personal_curriculum_path.exists():
+        print("Personal curriculum file not found. Skipping...")
+        return
+
+    personal_curriculum_df = pd.read_csv(personal_curriculum_path)
+
+    def _is_truthy(val):
+        if pd.isna(val):
+            return False
+        if isinstance(val, bool):
+            return val
+        if isinstance(val, (int, float)):
+            return bool(val)
+        return str(val).strip().lower() in ('1', 'true', 'yes', 'y', 't')
+
+    elective_lookup = {
+        str(code): _is_truthy(flag)
+        for code, flag in zip(
+            personal_curriculum_df['course_code'],
+            personal_curriculum_df.get('is_elective', [])
+        )
+    }
 
     def make_labels(df):
         return [
@@ -505,28 +538,68 @@ def plot_personal_top_hidden_deps(top_n=15):
     official_df = pd.read_csv(official_path).sort_values('similarity_score', ascending=False).head(top_n)
     personal_df = pd.read_csv(personal_path).sort_values('similarity_score', ascending=False).head(top_n)
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(26, max(len(official_df), len(personal_df)) * 0.45 + 2))
+    required_color = '#4C72B0'  # blue
+    elective_color = '#2ca02c'  # green
 
-    ax1.barh(range(len(official_df)), official_df['similarity_score'], color='steelblue', alpha=0.85)
-    ax1.set_yticks(range(len(official_df)))
-    ax1.set_yticklabels(make_labels(official_df), fontsize=8)
+    # Layout and font sizing for report-quality figures
+    title_fs = 26
+    label_fs = 20
+    tick_fs = 18
+    ytick_fs = 20
+    legend_fs = 18
+
+    # Use a wider figure so titles/labels have room
+    fig_width = 20
+    fig_height = max(len(official_df), len(personal_df)) * 1.2 + 6
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(fig_width, fig_height))
+
+    # Bar height controls thickness; keep less than 1 to avoid overlap
+    bar_height = 0.3
+    n_off = len(official_df)
+    spacing = bar_height + 0.06  # small gap between bars
+    y_off = np.arange(n_off) * spacing
+    ax1.barh(y_off, official_df['similarity_score'], height=bar_height,
+             color=required_color, alpha=0.95)
+    ax1.set_yticks(y_off)
+    ax1.set_yticklabels(make_labels(official_df), fontsize=ytick_fs)
     ax1.invert_yaxis()
-    ax1.set_xlabel('Cosine similarity')
-    ax1.set_title(f'Official curriculum (top {len(official_df)} hidden dependencies)')
-    ax1.grid(axis='x', alpha=0.3)
+    ax1.set_xlabel('Cosine similarity', fontsize=label_fs)
+    ax1.set_title(f'Official curriculum (top {len(official_df)} hidden dependencies)', fontsize=title_fs, pad=18)
+    ax1.tick_params(axis='x', labelsize=tick_fs)
+    ax1.grid(axis='x', alpha=0.25)
 
-    ax2.barh(range(len(personal_df)), personal_df['similarity_score'], color='coral', alpha=0.85)
-    ax2.set_yticks(range(len(personal_df)))
-    ax2.set_yticklabels(make_labels(personal_df), fontsize=8)
+    personal_colors = []
+    personal_label_colors = []
+    for _, row in personal_df.iterrows():
+        src = str(row['source_course'])
+        tgt = str(row['target_course'])
+        has_elective = elective_lookup.get(src, False) or elective_lookup.get(tgt, False)
+        personal_colors.append(elective_color if has_elective else required_color)
+        personal_label_colors.append(elective_color if has_elective else 'black')
+
+    n_per = len(personal_df)
+    y_per = np.arange(n_per) * spacing
+    ax2.barh(y_per, personal_df['similarity_score'], height=bar_height,
+             color=personal_colors, alpha=0.95)
+    ax2.set_yticks(y_per)
+    ax2.set_yticklabels(make_labels(personal_df), fontsize=ytick_fs)
+    for label, color in zip(ax2.get_yticklabels(), personal_label_colors):
+        label.set_color(color)
     ax2.invert_yaxis()
-    ax2.set_xlabel('Cosine similarity')
-    ax2.set_title(f'Personal curriculum (top {len(personal_df)} hidden dependencies)')
-    ax2.grid(axis='x', alpha=0.3)
+    ax2.set_xlabel('Cosine similarity', fontsize=label_fs)
+    ax2.set_title(f'Personal curriculum (top {len(personal_df)} hidden dependencies)', fontsize=title_fs, pad=18)
+    ax2.tick_params(axis='x', labelsize=tick_fs)
+    ax2.grid(axis='x', alpha=0.25)
 
-    plt.suptitle('Hidden semantic dependencies: official vs personal curriculum',
-                 fontsize=13, fontweight='bold')
+    ax2.legend(handles=[
+        mpatches.Patch(color=required_color, label='Mandatory dependency pair'),
+        mpatches.Patch(color=elective_color, label='Elective involved (source or target)'),
+    ], fontsize=legend_fs, loc='lower right')
+
+    plt.suptitle('Hidden semantic dependencies: official vs personal curriculum', fontsize=28, fontweight='bold', y=0.995)
     plt.tight_layout()
-    plt.subplots_adjust(wspace=0.6)
+    # Restore wider panel spacing used previously
+    plt.subplots_adjust(left=0.06, right=0.98, wspace=0.42)
     plt.show()
 
 
@@ -608,41 +681,120 @@ def plot_augmented_vs_original(top_n=15):
     plt.show()
 
 
-def plot_personal_top_structural_risk(top_n=10):
+def plot_personal_top_structural_risk(top_n=20, include_all_electives=False, ensure_elective=True):
     personal_path = BASE_DIR / "data" / "raw" / "personal_CSE_curriculum.csv"
     if not personal_path.exists():
         print("Personal curriculum file not found. Skipping...")
         return
 
-    # Official
-    struct_df = load_structural_results()
-    top_official = struct_df.sort_values('structural_risk', ascending=False).head(top_n)
+    personal_df = pd.read_csv(personal_path)
+
+    def _is_truthy(val):
+        if pd.isna(val):
+            return False
+        if isinstance(val, bool):
+            return val
+        if isinstance(val, (int, float)):
+            return bool(val)
+        s = str(val).strip().lower()
+        return s in ('1', 'true', 'yes', 'y', 't')
+
+    elective_lookup = {
+        code: _is_truthy(val)
+        for code, val in zip(personal_df['course_code'], personal_df.get('is_elective', []))
+    }
 
     # Personal
     G_personal = load_and_build_dag(personal_path)
     risk_scores, _ = ge.compute_structural_risk_score(G_personal)
-    top_personal = pd.DataFrame([
+    full_personal = pd.DataFrame([
         {'course_code': c, 'structural_risk': round(v, 4)}
         for c, v in risk_scores.items()
-    ]).sort_values('structural_risk', ascending=False).head(top_n)
+    ]).sort_values('structural_risk', ascending=False).reset_index(drop=True)
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+    effective_top_n = top_n
+    if ensure_elective and not include_all_electives:
+        for idx, code in enumerate(full_personal['course_code']):
+            if elective_lookup.get(code, False):
+                if idx + 1 > effective_top_n:
+                    effective_top_n = idx + 1
+                break
 
-    ax1.bar(top_official['course_code'], top_official['structural_risk'])
+    # Official
+    struct_df = load_structural_results()
+    top_official = struct_df.sort_values('structural_risk', ascending=False).head(effective_top_n)
+    top_official = top_official.reset_index(drop=True)
+
+    top_personal = full_personal.head(effective_top_n).copy()
+
+    # Use visually distinct colors and add a thin edge for clarity
+    required_color = '#4C72B0'   # blue (mandatory)
+    elective_color = '#2ca02c'   # green (elective)
+
+    fig1, ax1 = plt.subplots(figsize=(10, 6))
+
+    ax1.bar(top_official['course_code'], top_official['structural_risk'],
+            color=required_color, edgecolor='black', linewidth=0.6)
     ax1.set_xticks(range(len(top_official)))
     ax1.set_xticklabels(top_official['course_code'], rotation=45, ha='right')
+    ax1.tick_params(axis='x', labelsize=9)
     ax1.set_ylabel('Structural risk')
-    ax1.set_title(f'Top {top_n}: official curriculum')
+    ax1.set_title(f'Top {effective_top_n}: official curriculum')
 
-    ax2.bar(top_personal['course_code'], top_personal['structural_risk'], color='coral')
-    ax2.set_xticks(range(len(top_personal)))
-    ax2.set_xticklabels(top_personal['course_code'], rotation=45, ha='right')
+    # Build the personal panel dataset. By default keep exactly top_n; if
+    # include_all_electives is True, append elective courses and re-sort.
+    if include_all_electives:
+        elective_codes = [c for c, v in elective_lookup.items() if v]
+        elective_rows = [
+            {'course_code': c, 'structural_risk': round(risk_scores.get(c, 0), 4)}
+            for c in elective_codes if c in risk_scores
+        ]
+        if elective_rows:
+            elect_df = pd.DataFrame(elective_rows)
+            combined = pd.concat([top_personal, elect_df], ignore_index=True)
+            combined = combined.drop_duplicates(subset='course_code', keep='first')
+        else:
+            combined = top_personal.copy()
+        combined = combined.sort_values('structural_risk', ascending=False).reset_index(drop=True)
+    else:
+        combined = top_personal.copy()
+
+    # Enforce strict top_n when not including electives
+    if not include_all_electives:
+        combined = combined.head(top_n)
+
+    colors2 = [elective_color if elective_lookup.get(course_code, False) else required_color
+               for course_code in combined['course_code']]
+
+    fig2, ax2 = plt.subplots(figsize=(10, 6))
+
+    ax2.bar(combined['course_code'], combined['structural_risk'], color=colors2,
+            edgecolor='black', linewidth=0.6)
+    ax2.set_xticks(range(len(combined)))
+    ax2.set_xticklabels(combined['course_code'], rotation=45, ha='right')
+    ax2.tick_params(axis='x', labelsize=9)
+    for label, course_code in zip(ax2.get_xticklabels(), combined['course_code']):
+        if elective_lookup.get(course_code, False):
+            label.set_color(elective_color)
     ax2.set_ylabel('Structural risk')
-    ax2.set_title(f'Top {top_n}: personal curriculum')
+    title_suffix = f' (showing {len(combined)})' if include_all_electives else ''
+    ax2.set_title(f'Top {effective_top_n}: personal curriculum{title_suffix}')
+    ax2.legend(handles=[
+        mpatches.Patch(color=required_color, label='Required course'),
+        mpatches.Patch(color=elective_color, label='Elective'),
+    ], fontsize=9)
 
-    plt.suptitle('Top structural risk courses: official vs personal curriculum',
-                 fontsize=13, fontweight='bold')
-    plt.tight_layout()
+    # Sync y-axis limits for fair visual comparison
+    max_risk = max(top_official['structural_risk'].max(), combined['structural_risk'].max())
+    ax1.set_ylim(0, max_risk * 1.05)
+    ax2.set_ylim(0, max_risk * 1.05)
+
+    for ax in (ax1, ax2):
+        ax.grid(axis='y', alpha=0.25)
+        ax.set_axisbelow(True)
+
+    fig1.tight_layout()
+    fig2.tight_layout()
     plt.show()
 
 

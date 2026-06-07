@@ -9,11 +9,11 @@ import pathlib
 def load_and_build_dag(csv_path):
     df = pd.read_csv(csv_path)
     df = df.fillna("")
+    df = df[df["course_code"].str.strip().astype(bool)]
 
     G = nx.DiGraph()
 
     for _, row in df.iterrows():
-        # Handle multi-quarter courses (e.g., "1,2") by taking first quarter
         quarter_str = str(row.get("quarter", "1")).strip()
         if not quarter_str:
             quarter_str = "1"
