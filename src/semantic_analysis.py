@@ -42,7 +42,7 @@ class SemanticCurriculumAnalyzer:
     def load_and_encode(self):
         df = pd.read_csv(self.csv_path).fillna("")
 
-        # Elective placeholders and empty rows have no real content — skip them
+        # skip elective placeholders and empty rows
         df = df[df['course_code'].notna() & (df['course_code'].str.strip() != "")].copy()
         df = df[~df['course_code'].str.contains("Elective", na=False)].copy()
         df = df.reset_index(drop=True)
@@ -69,7 +69,7 @@ class SemanticCurriculumAnalyzer:
         np.fill_diagonal(self.sim_matrix, 0.0)
 
         upper = self.sim_matrix[np.triu_indices_from(self.sim_matrix, k=1)]
-        print(f"Similarity — min: {upper.min():.3f}, max: {upper.max():.3f}, mean: {upper.mean():.3f}")
+        print(f"Similarity  min: {upper.min():.3f}, max: {upper.max():.3f}, mean: {upper.mean():.3f}")
 
     def detect_hidden_dependencies(self):
         # Top 5% of pairwise similarities, with a floor at 0.6 to avoid weak edges.
@@ -220,9 +220,7 @@ class SemanticCurriculumAnalyzer:
         return self.correlation
 
     def run_augmented_graph_experiment(self):
-        # Add hidden semantic edges to the formal DAG and recompute structural metrics.
-        # Courses that gain rank after augmentation are hidden bottlenecks the formal
-        # graph misses — they become structurally important once conceptual links are added.
+        # Add semantic edges to the formal DAG and recompute structural metrics.
         DATA_PATH = BASE_DIR / "data" / "raw" / "CSE_curriculum_data.csv"
         G_orig = load_and_build_dag(DATA_PATH)
         G_aug = G_orig.copy()
@@ -326,7 +324,7 @@ def run_personal_semantic_pipeline(personal_csv_path, reuse_model, output_dir):
         for c, v in personal_risk_scores.items()
     ])
 
-    # Reuse model — no second 420MB load
+    # reuse model to avoid loading it twice
     analyzer = SemanticCurriculumAnalyzer(
         personal_csv_path,
         structural_csv_path=personal_csv_path,  # not read from disk; overridden below
@@ -377,13 +375,18 @@ if __name__ == "__main__":
     )
     plot_similarity_heatmap(analyzer.sim_matrix, analyzer.course_codes, analyzer.df)
     plot_divergence_scatter(analyzer.divergence_df)
-    plot_semantic_graph(analyzer.hidden_deps, analyzer.divergence_df, analyzer.threshold)
+    plot_semantic_graph(analyzer.hidden_deps, analyzer.threshold)
     plot_concept_clusters(analyzer.embeddings, analyzer.cluster_labels, analyzer.course_codes, analyzer.divergence_df)
 
     if personal_analyzer is not None:
+        personal_df = pd.read_csv(BASE_DIR / "data" / "raw" / "personal_CSE_curriculum.csv")
+        elective_codes = set(
+            personal_df.loc[personal_df['is_elective'] == True, 'course_code'].dropna()
+        )
         plot_personal_semantic_graph(
-            analyzer.hidden_deps, analyzer.divergence_df, analyzer.threshold,
-            personal_analyzer.hidden_deps, personal_analyzer.divergence_df, personal_analyzer.threshold,
+            analyzer.hidden_deps, analyzer.threshold,
+            personal_analyzer.hidden_deps, personal_analyzer.threshold,
+            elective_codes=elective_codes,
         )
 
     print("\nSemantic analysis complete.")

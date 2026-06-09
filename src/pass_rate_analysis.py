@@ -58,7 +58,7 @@ def analyse_pass_rates(save: bool = True) -> pd.DataFrame:
 
     # Top-5 hidden dependencies by similarity score
     print("\n" + "-" * 70)
-    print("Top 5 hidden dependencies by cosine similarity — target pass-rate check")
+    print("Top 5 hidden dependencies by cosine similarity, target pass-rate check")
     print("-" * 70)
 
     top5 = hidden_deps.nlargest(5, "similarity_score").reset_index(drop=True)
@@ -78,7 +78,7 @@ def analyse_pass_rates(save: bool = True) -> pd.DataFrame:
             pr = rate_lookup.at[tgt, "pass_rate"]
             ym = rate_lookup.at[tgt, "year_mean_non_targets"]
             below = pr < ym
-            label = "YES — BELOW AVERAGE" if below else "NO  — above average"
+            label = "YES - BELOW AVERAGE" if below else "NO  - above average"
             seen_targets[tgt] = label
             print(
                 f"  {src} -> {tgt}  (sim={sim:.4f}): "

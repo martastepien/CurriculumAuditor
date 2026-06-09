@@ -372,18 +372,23 @@ def plot_divergence_scatter(divergence_df):
     plt.show()
 
 
-def _draw_hidden_dep_graph(hidden_deps, divergence_df, ax, title, threshold):
+NODE_COLOR_DEFAULT = '#4C72B0'
+NODE_COLOR_ELECTIVE = '#2ca02c'
+
+
+def _draw_hidden_dep_graph(hidden_deps, ax, title, threshold, elective_codes=None):
     G = nx.DiGraph()
     for _, row in hidden_deps.iterrows():
         G.add_edge(row['source_course'], row['target_course'], weight=row['normalized_weight'])
 
-    div_lookup  = dict(zip(divergence_df['course_code'], divergence_df['divergence_score']))
-    node_sizes  = [4000 + div_lookup.get(n, 0) * 4000 for n in G.nodes()]
-    node_colors = ['crimson' if div_lookup.get(n, 0) > 0 else 'steelblue' for n in G.nodes()]
+    node_colors = [
+        NODE_COLOR_ELECTIVE if (elective_codes and n in elective_codes) else NODE_COLOR_DEFAULT
+        for n in G.nodes()
+    ]
     edge_widths = [G[u][v]['weight'] * 8 for u, v in G.edges()]
 
     pos = nx.spring_layout(G, seed=RANDOM_SEED, k=3.5)
-    nx.draw_networkx_nodes(G, pos, node_size=node_sizes, node_color=node_colors, alpha=0.85, ax=ax)
+    nx.draw_networkx_nodes(G, pos, node_size=3500, node_color=node_colors, alpha=0.85, ax=ax)
     nx.draw_networkx_labels(G, pos, font_size=22, font_weight='bold', ax=ax)
     nx.draw_networkx_edges(G, pos, width=edge_widths, alpha=0.55, edge_color='gray',
                            arrows=True, arrowsize=20, connectionstyle='arc3,rad=0.1', ax=ax)
@@ -392,25 +397,22 @@ def _draw_hidden_dep_graph(hidden_deps, divergence_df, ax, title, threshold):
     ax.axis('off')
 
 
-def plot_semantic_graph(hidden_deps, divergence_df, threshold):
+def plot_semantic_graph(hidden_deps, threshold):
     if hidden_deps is None or len(hidden_deps) == 0:
         print("No hidden dependencies to plot.")
         return
 
     fig, ax = plt.subplots(figsize=(18, 14))
-    _draw_hidden_dep_graph(hidden_deps, divergence_df, ax, "Hidden semantic dependency graph", threshold)
-
-    ax.legend(handles=[
-        mpatches.Patch(color='crimson',   label='Positive divergence (hidden constraint)'),
-        mpatches.Patch(color='steelblue', label='Negative divergence'),
-    ], fontsize=12)
+    _draw_hidden_dep_graph(hidden_deps, ax,
+                           "Latent semantic links, official TU/e CSE curriculum", threshold)
     plt.tight_layout()
     plt.show()
 
 
 def plot_personal_semantic_graph(
-    official_hidden_deps, official_divergence_df, official_threshold,
-    personal_hidden_deps, personal_divergence_df, personal_threshold,
+    official_hidden_deps, official_threshold,
+    personal_hidden_deps, personal_threshold,
+    elective_codes=None,
 ):
     if official_hidden_deps is None or personal_hidden_deps is None:
         print("Missing hidden dependency data. Skipping personal semantic graph.")
@@ -418,18 +420,19 @@ def plot_personal_semantic_graph(
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(32, 16))
 
-    _draw_hidden_dep_graph(official_hidden_deps, official_divergence_df,
-                           ax1, "Official curriculum", official_threshold)
-    _draw_hidden_dep_graph(personal_hidden_deps, personal_divergence_df,
-                           ax2, "Personal curriculum", personal_threshold)
+    _draw_hidden_dep_graph(official_hidden_deps, ax1,
+                           "Latent semantic links, official TU/e CSE curriculum",
+                           official_threshold)
+    _draw_hidden_dep_graph(personal_hidden_deps, ax2,
+                           "Latent semantic links, student-augmented curriculum",
+                           personal_threshold, elective_codes=elective_codes)
 
-    fig.legend(handles=[
-        mpatches.Patch(color='crimson',   label='Positive divergence (hidden constraint)'),
-        mpatches.Patch(color='steelblue', label='Negative divergence'),
-    ], loc='lower center', ncol=2, fontsize=18)
-    plt.suptitle("Hidden semantic dependency graph: official vs personal curriculum",
-                 fontsize=26, fontweight='bold')
-    plt.tight_layout(rect=[0, 0.05, 1, 1])
+    ax2.legend(handles=[
+        mpatches.Patch(color=NODE_COLOR_DEFAULT,  label='Required course'),
+        mpatches.Patch(color=NODE_COLOR_ELECTIVE, label='Elective'),
+    ], loc='lower right', fontsize=18)
+
+    plt.tight_layout()
     plt.show()
 
 

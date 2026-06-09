@@ -103,36 +103,21 @@ def compute_articulation_reach(G):
 
 # Temporal criticality - weighted longest path in QUARTERS
 def compute_temporal_criticality(G):
-    """
-    Weighted longest path: Measures how far into the curriculum (in quarters)
-    a student must progress to reach each course. Captures the actual time-cost of failure.
-    Unlike logical depth (which counts hops), this accounts for:
-    - Course scheduling (year/quarter positions)
-    - Time gaps between prerequisites and dependents
-    - Maximum graduation delay potential if a course is failed or delayed.
-    Returns: Dict mapping each node to its maximum "quarter reach" from degree start.
-    """
+    # Weighted longest path in quarters from degree start.
+    # Unlike logical depth (hop count), accounts for scheduling gaps and actual delay potential.
     if not nx.is_directed_acyclic_graph(G):
         raise ValueError("Temporal criticality requires a DAG.")
     topo = list(nx.topological_sort(G))
     
-    # Calculate absolute time position for each node (quarters from degree start)
     node_time = {
-        n: (G.nodes[n]['year'] - 1) * 4 + G.nodes[n]['quarter'] 
+        n: (G.nodes[n]['year'] - 1) * 4 + G.nodes[n]['quarter']
         for n in G.nodes
     }
-    # max_time_reach[v] = furthest calendar quarter needed to reach node v
-    # Initialize with the node's own scheduled time
     max_time_reach = {node: node_time[node] for node in G.nodes}
-    
+
     for u in topo:
         for v in G.successors(u):
-            # v depends on u, so v can only be completed AFTER u is done
-            # The +1 represents that you must complete at least one more time period
-            max_time_reach[v] = max(
-                max_time_reach[v], 
-                max_time_reach[u] + 1
-            )
+            max_time_reach[v] = max(max_time_reach[v], max_time_reach[u] + 1)
     return max_time_reach
 
 
@@ -158,14 +143,15 @@ def normalize(metric_dict):
 def compute_structural_risk_score(G, weights=None, selected_metrics=None):
     """
     Computes all 6 structural metrics:
-    - block:       Blocking Factor — downstream credit impact
-    - bet:         Betweenness — logical bottleneck position
-    - pagerank:    PageRank — accumulated upstream dependency prestige
-    - logical:     Logical Depth — knowledge chain depth (unweighted hops)
-    - temporal:    Temporal Criticality — graduation delay risk (quarters)
-    - articulation: Articulation Impact — reachability drop on node removal
+    Computes all 6 structural metrics:
+    - block:        blocking factor (downstream credit weight)
+    - bet:          betweenness centrality
+    - pagerank:     PageRank
+    - logical:      longest path depth (hops)
+    - temporal:     temporal criticality (quarters)
+    - articulation: reachability drop on removal
 
-    selected_metrics controls which subset is used for the composite risk score.
+    selected_metrics controls which subset is used for the composite score.
     """
     if not nx.is_directed_acyclic_graph(G):
         raise ValueError("Structural risk requires a DAG.")
