@@ -567,7 +567,7 @@ def plot_personal_top_hidden_deps(top_n=15):
     ax1.set_yticklabels(make_labels(official_df), fontsize=ytick_fs)
     ax1.invert_yaxis()
     ax1.set_xlabel('Cosine similarity', fontsize=label_fs)
-    ax1.set_title(f'Official curriculum (top {len(official_df)} hidden dependencies)', fontsize=title_fs, pad=18)
+    ax1.set_title(f'Official TU/e CSE (top {len(official_df)})', fontsize=title_fs, pad=18)
     ax1.tick_params(axis='x', labelsize=tick_fs)
     ax1.grid(axis='x', alpha=0.25)
 
@@ -590,7 +590,7 @@ def plot_personal_top_hidden_deps(top_n=15):
         label.set_color(color)
     ax2.invert_yaxis()
     ax2.set_xlabel('Cosine similarity', fontsize=label_fs)
-    ax2.set_title(f'Personal curriculum (top {len(personal_df)} hidden dependencies)', fontsize=title_fs, pad=18)
+    ax2.set_title(f'Student-augmented (top {len(personal_df)})', fontsize=title_fs, pad=18)
     ax2.tick_params(axis='x', labelsize=tick_fs)
     ax2.grid(axis='x', alpha=0.25)
 
@@ -599,7 +599,7 @@ def plot_personal_top_hidden_deps(top_n=15):
         mpatches.Patch(color=elective_color, label='Elective involved (source or target)'),
     ], fontsize=legend_fs, loc='lower right')
 
-    plt.suptitle('Hidden semantic dependencies: official vs personal curriculum', fontsize=28, fontweight='bold', y=0.995)
+    plt.suptitle('Latent semantic links: official TU/e CSE vs student-augmented curriculum', fontsize=28, fontweight='bold', y=0.995)
     plt.tight_layout()
     # Restore wider panel spacing used previously
     plt.subplots_adjust(left=0.06, right=0.98, wspace=0.42)
