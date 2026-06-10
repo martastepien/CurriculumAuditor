@@ -375,7 +375,7 @@ if __name__ == "__main__":
     )
     plot_similarity_heatmap(analyzer.sim_matrix, analyzer.course_codes, analyzer.df)
     plot_divergence_scatter(analyzer.divergence_df)
-    plot_semantic_graph(analyzer.hidden_deps, analyzer.threshold)
+    plot_semantic_graph(analyzer.hidden_deps)
     plot_concept_clusters(analyzer.embeddings, analyzer.cluster_labels, analyzer.course_codes, analyzer.divergence_df)
 
     if personal_analyzer is not None:
@@ -384,8 +384,8 @@ if __name__ == "__main__":
             personal_df.loc[personal_df['is_elective'] == True, 'course_code'].dropna()
         )
         plot_personal_semantic_graph(
-            analyzer.hidden_deps, analyzer.threshold,
-            personal_analyzer.hidden_deps, personal_analyzer.threshold,
+            analyzer.hidden_deps,
+            personal_analyzer.hidden_deps,
             elective_codes=elective_codes,
         )
 

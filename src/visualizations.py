@@ -376,6 +376,10 @@ NODE_COLOR_DEFAULT = '#4C72B0'
 NODE_COLOR_ELECTIVE = '#2ca02c'
 
 
+THRESHOLD_OFFICIAL = 0.728
+THRESHOLD_PERSONAL = 0.689
+
+
 def _draw_hidden_dep_graph(hidden_deps, ax, title, threshold, elective_codes=None):
     G = nx.DiGraph()
     for _, row in hidden_deps.iterrows():
@@ -397,21 +401,21 @@ def _draw_hidden_dep_graph(hidden_deps, ax, title, threshold, elective_codes=Non
     ax.axis('off')
 
 
-def plot_semantic_graph(hidden_deps, threshold):
+def plot_semantic_graph(hidden_deps):
     if hidden_deps is None or len(hidden_deps) == 0:
         print("No hidden dependencies to plot.")
         return
 
     fig, ax = plt.subplots(figsize=(18, 14))
     _draw_hidden_dep_graph(hidden_deps, ax,
-                           "Latent semantic links, official TU/e CSE curriculum", threshold)
+                           "Latent semantic links, official TU/e CSE curriculum", THRESHOLD_OFFICIAL)
     plt.tight_layout()
     plt.show()
 
 
 def plot_personal_semantic_graph(
-    official_hidden_deps, official_threshold,
-    personal_hidden_deps, personal_threshold,
+    official_hidden_deps,
+    personal_hidden_deps,
     elective_codes=None,
 ):
     if official_hidden_deps is None or personal_hidden_deps is None:
@@ -422,10 +426,10 @@ def plot_personal_semantic_graph(
 
     _draw_hidden_dep_graph(official_hidden_deps, ax1,
                            "Latent semantic links, official TU/e CSE curriculum",
-                           official_threshold)
+                           THRESHOLD_OFFICIAL)
     _draw_hidden_dep_graph(personal_hidden_deps, ax2,
                            "Latent semantic links, student-augmented curriculum",
-                           personal_threshold, elective_codes=elective_codes)
+                           THRESHOLD_PERSONAL, elective_codes=elective_codes)
 
     ax2.legend(handles=[
         mpatches.Patch(color=NODE_COLOR_DEFAULT,  label='Required course'),
