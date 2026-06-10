@@ -670,14 +670,14 @@ def plot_augmented_vs_original(top_n=15):
     ax.set_yticklabels(top['course_code'])
     ax.invert_yaxis()
     ax.axvline(0, color='black', linewidth=0.8)
-    ax.set_xlabel('Rank shift (positive = moved up after adding semantic edges)')
+    ax.set_xlabel('Rank shift (positive = moved up after adding latent semantic links)')
     ax.set_title(
-        f'Hidden bottlenecks: rank change after augmenting formal graph\nwith semantic edges (top {top_n} by shift)',
+        f'Rank change from adding latent semantic links as prerequisites (top {top_n} by shift)',
         fontsize=12
     )
     ax.grid(axis='x', alpha=0.3)
     ax.legend(handles=[
-        mpatches.Patch(color='crimson',   label='Hidden bottleneck (gained importance)'),
+        mpatches.Patch(color='crimson',   label='Gained importance'),
         mpatches.Patch(color='steelblue', label='Reduced importance'),
     ], fontsize=9)
     plt.tight_layout()
