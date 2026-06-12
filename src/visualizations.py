@@ -222,11 +222,10 @@ def plot_metric_correlations(n_select=3):
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 7))
 
-    title_suffix = " (My Curriculum)" if personal_courses is not None else ""
     sns.heatmap(corr_matrix, annot=True, fmt='.4f', cmap='coolwarm',
                 center=0, square=True, linewidths=1, ax=ax1,
                 xticklabels=x_labels_all, yticklabels=x_labels_all)
-    ax1.set_title(f'All {len(available)} metrics: correlation matrix{title_suffix}')
+    ax1.set_title('Correlation Matrix of 6 Candidate Metrics\n(Student-Augmented Curriculum)')
 
     sns.heatmap(sub_corr, annot=True, fmt='.4f', cmap='coolwarm',
                 center=0, square=True, linewidths=1, ax=ax2,
@@ -389,7 +388,7 @@ def _draw_hidden_dep_graph(hidden_deps, ax, title, threshold, elective_codes=Non
         NODE_COLOR_ELECTIVE if (elective_codes and n in elective_codes) else NODE_COLOR_DEFAULT
         for n in G.nodes()
     ]
-    edge_widths = [G[u][v]['weight'] * 8 for u, v in G.edges()]
+    edge_widths = [max(1.2, G[u][v]['weight'] * 8) for u, v in G.edges()]
 
     pos = nx.spring_layout(G, seed=RANDOM_SEED, k=3.5)
     nx.draw_networkx_nodes(G, pos, node_size=3500, node_color=node_colors, alpha=0.85, ax=ax)
@@ -664,25 +663,76 @@ def plot_augmented_vs_original(top_n=15):
         print("Augmented graph comparison not found. Run semantic_analysis.py first.")
         return
 
-    aug_df = pd.read_csv(aug_path).sort_values('rank_shift', ascending=False)
-    top    = aug_df[aug_df['rank_shift'] != 0].head(top_n)
-    colors = ['crimson' if s > 0 else 'steelblue' for s in top['rank_shift']]
+    aug_df = pd.read_csv(aug_path)
+    aug_df = aug_df[~aug_df['course_code'].str.contains('Elective', na=False)]
+    changed = aug_df.sort_values('augmented_rank', ascending=True).head(top_n)
+
+    courses = changed['course_code'].tolist()
+    orig    = changed['original_risk'].tolist()
+    augr    = changed['augmented_risk'].tolist()
+    deltas  = [a - o for a, o in zip(augr, orig)]
+
+    x = np.arange(len(courses))
+    w = 0.35
+
+    fig, ax = plt.subplots(figsize=(16, 8))
+
+    ax.bar(x - w/2, orig, width=w, color='steelblue',  alpha=0.9, label='Before augmentation')
+    ax.bar(x + w/2, augr, width=w, color='darkorange', alpha=0.9, label='After augmentation')
+
+    for i, (o, a, d) in enumerate(zip(orig, augr, deltas)):
+        sign  = '+' if d > 0 else ''
+        color = '#2a9d2a' if d > 0 else ('#cc2222' if d < 0 else '#888888')
+        label = f'{sign}{d:.3f}' if abs(d) >= 0.001 else 'unchanged'
+        ax.annotate(label,
+                    xy=(x[i], max(o, a) + 0.015), ha='center', va='bottom',
+                    fontsize=9.5, fontweight='bold', color=color,
+                    bbox=dict(boxstyle='round,pad=0.2', facecolor='white',
+                              edgecolor=color, linewidth=0.8, alpha=0.85))
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(courses, rotation=45, ha='right', fontsize=11, fontweight='bold')
+    ax.set_ylabel('Structural risk score (0-1)', fontsize=12)
+    ax.set_ylim(0, max(augr + orig) * 1.28)
+    ax.set_title('Structural risk score: before vs after adding latent semantic edges\n'
+                 '(sorted by post-augmentation ranking)', fontsize=14, fontweight='bold', pad=14)
+    ax.legend(fontsize=11, loc='upper right')
+    ax.grid(axis='y', alpha=0.25)
+    ax.set_axisbelow(True)
+
+    fig.text(0.5, -0.01,
+             'Labels show risk score change (augmented − original). Green = gained risk, red = lost risk.',
+             ha='center', fontsize=9.5, color='#444444', style='italic')
+
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_hidden_bottlenecks(top_n=15):
+    aug_path = BASE_DIR / "data" / "processed" / "augmented_graph_comparison.csv"
+    if not aug_path.exists():
+        print("Augmented graph comparison not found. Run semantic_analysis.py first.")
+        return
+
+    aug_df = pd.read_csv(aug_path)
+    aug_df = aug_df[~aug_df['course_code'].str.contains('Elective', na=False)]
+    aug_df['score_change'] = aug_df['augmented_risk'] - aug_df['original_risk']
+    top = aug_df[aug_df['score_change'] != 0].sort_values('score_change', ascending=False).head(top_n)
+    colors = ['crimson' if s > 0 else 'steelblue' for s in top['score_change']]
 
     fig, ax = plt.subplots(figsize=(10, 7))
-    ax.barh(range(len(top)), top['rank_shift'], color=colors)
+    ax.barh(range(len(top)), top['score_change'], color=colors)
     ax.set_yticks(range(len(top)))
     ax.set_yticklabels(top['course_code'])
     ax.invert_yaxis()
     ax.axvline(0, color='black', linewidth=0.8)
-    ax.set_xlabel('Rank shift (positive = moved up after adding latent semantic links)')
-    ax.set_title(
-        f'Rank change from adding latent semantic links as prerequisites (top {top_n} by shift)',
-        fontsize=12
-    )
+    ax.set_xlabel('Risk score change (augmented − original)', fontsize=11)
+    ax.set_title('Risk score change from adding latent semantic links\n(top 15 by score change)',
+                 fontsize=12)
     ax.grid(axis='x', alpha=0.3)
     ax.legend(handles=[
-        mpatches.Patch(color='crimson',   label='Gained importance'),
-        mpatches.Patch(color='steelblue', label='Reduced importance'),
+        mpatches.Patch(color='crimson',   label='Hidden bottleneck (risk increased)'),
+        mpatches.Patch(color='steelblue', label='Risk decreased'),
     ], fontsize=9)
     plt.tight_layout()
     plt.show()

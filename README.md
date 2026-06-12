@@ -1,6 +1,6 @@
 # CurriculumAuditor
 
-A tool for auditing university curricula by combining graph-theoretic risk metrics with semantic content analysis. Built as part of a bachelor's thesis investigating how these two approaches differ in identifying high-risk courses — and what those differences reveal about hidden structural constraints in degree programs.
+A tool for auditing university curricula by combining graph-theoretic risk metrics with semantic content analysis. Built as part of a bachelor's thesis investigating how these two approaches differ in identifying high-risk courses and what those differences reveal about hidden structural constraints in degree programs.
 
 ## What it does
 
@@ -19,6 +19,16 @@ BEP/
 │   ├── semantic_analysis.py          # Semantic similarity + latent semantic links detection
 │   └── visualizations.py            # All plots
 ```
+
+## Risk metrics
+
+Three metrics contribute equally (1/3 each) to the composite `structural_risk` score:
+
+- Blocking factor: Share of downstream credits blocked if this course is failed
+- Betweenness centrality: How often this course sits on critical prerequisite paths
+- PageRank: Importance weighted by the importance of predecessors
+
+All scores are normalized to 0–1 before combining.
 
 ## Input format
 
