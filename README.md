@@ -11,13 +11,17 @@ Takes a course prerequisite graph, computes structural risk scores per course, t
 ```
 BEP/
 ├── data/
-│   ├── raw/                          # Input CSVs (curriculum data)
-│   └── processed/                    # Computed risk scores and analysis output
+│   ├── raw/          # Input CSVs (curriculum data)
+│   └── processed/    # Computed risk scores and analysis output
 ├── src/
-│   ├── graph_engine.py               # Risk metric computation
+│   ├── graph_engine.py               # Risk metrics
 │   ├── comparative_study.py          # Main analysis pipeline
-│   ├── semantic_analysis.py          # Semantic similarity + latent semantic links detection
-│   └── visualizations.py            # All plots
+│   ├── semantic_analysis.py          # Latent semantic link detection
+│   ├── metric_redundancy_analysis.py # Correlation between the 6 candidate metrics
+│   ├── pass_rate_analysis.py         # Target vs. year-average pass rates
+│   ├── augmented_risk_comparison.py  # Risk ranking before/after semantic edges
+│   ├── passrate_check_figure.py      # Defense slide figure
+│   └── visualizations.py             # All other plots
 ```
 
 ## Risk metrics
