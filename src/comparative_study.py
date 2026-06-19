@@ -5,7 +5,6 @@ import graph_engine as ge
 import pathlib
 
 
-#loading and building DAG from CSV
 def load_and_build_dag(csv_path):
     df = pd.read_csv(csv_path)
     df = df.fillna("")
@@ -44,7 +43,6 @@ def load_and_build_dag(csv_path):
     return G
 
 
-#pipeline to run structural risk analysis and save results
 def run_structural_pipeline():
 
     BASE_DIR = pathlib.Path(__file__).resolve().parent.parent

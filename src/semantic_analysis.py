@@ -72,8 +72,7 @@ class SemanticCurriculumAnalyzer:
         print(f"Similarity  min: {upper.min():.3f}, max: {upper.max():.3f}, mean: {upper.mean():.3f}")
 
     def detect_hidden_dependencies(self):
-        # Top 5% of pairwise similarities, with a floor at 0.6 to avoid weak edges.
-        # Below 0.6 is considered weak by SBERT literature standards.
+        # top 5% of pairwise similarities, floored at 0.6 to avoid weak edges
         upper = self.sim_matrix[np.triu_indices_from(self.sim_matrix, k=1)]
         self.threshold = float(max(0.6, np.percentile(upper, 95)))
         print(f"Semantic edge threshold (95th percentile, min 0.6): {self.threshold:.4f}")
@@ -158,7 +157,6 @@ class SemanticCurriculumAnalyzer:
         ]
         sem_df = pd.DataFrame(rows)
 
-        # Count how many hidden dependencies each course is the source of
         if self.hidden_deps is not None and len(self.hidden_deps) > 0:
             dep_counts = self.hidden_deps.groupby('source_course').size().reset_index(name='hidden_dep_count')
         else:
@@ -220,7 +218,6 @@ class SemanticCurriculumAnalyzer:
         return self.correlation
 
     def run_augmented_graph_experiment(self):
-        # Add semantic edges to the formal DAG and recompute structural metrics.
         DATA_PATH = BASE_DIR / "data" / "raw" / "CSE_curriculum_data.csv"
         G_orig = load_and_build_dag(DATA_PATH)
         G_aug = G_orig.copy()
@@ -316,7 +313,6 @@ def run_personal_semantic_pipeline(personal_csv_path, reuse_model, output_dir):
     print("PERSONAL CURRICULUM SEMANTIC PIPELINE")
     print("=" * 60)
 
-    # Build personal DAG and compute structural risk on that subset
     G_personal = load_and_build_dag(personal_csv_path)
     personal_risk_scores, _ = ge.compute_structural_risk_score(G_personal)
     personal_struct_df = pd.DataFrame([
@@ -324,7 +320,6 @@ def run_personal_semantic_pipeline(personal_csv_path, reuse_model, output_dir):
         for c, v in personal_risk_scores.items()
     ])
 
-    # reuse model to avoid loading it twice
     analyzer = SemanticCurriculumAnalyzer(
         personal_csv_path,
         structural_csv_path=personal_csv_path,  # not read from disk; overridden below

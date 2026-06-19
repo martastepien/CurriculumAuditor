@@ -149,7 +149,6 @@ def main():
     after_df = compute_risk_df(G_aug)
     print(f"Augmented graph: {G_aug.number_of_nodes()} nodes, {G_aug.number_of_edges()} edges")
 
-    # Merge and save
     merged = before_df.rename(columns={"structural_risk": "risk_before"}).merge(
         after_df.rename(columns={"structural_risk": "risk_after"}),
         on="course_code", how="outer"

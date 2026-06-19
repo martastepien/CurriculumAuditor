@@ -13,8 +13,7 @@ def compute_all_metrics(csv_path):
     df = df.fillna("")
     
     G = nx.DiGraph()
-    
-    # Build graph
+
     for _, row in df.iterrows():
         # Handle multi-quarter courses (e.g., "1,2") by taking first quarter
         quarter_str = str(row.get("quarter", "1"))
@@ -53,13 +52,11 @@ def compute_all_metrics(csv_path):
         "articulation_impact": ge.compute_articulation_reach(G)
     }
     
-    # Normalize all metrics
     metrics = {
         name: ge.normalize(values)
         for name, values in metrics_raw.items()
     }
-    
-    # Create DataFrame
+
     results = []
     for node in G.nodes():
         results.append({
@@ -91,7 +88,6 @@ def analyze_correlations(df):
     print(corr_matrix.round(4))
     print("\n")
     
-    # Identify high correlations (> 0.7 typically indicates redundancy)
     print("="*60)
     print("HIGH CORRELATIONS (|r| > 0.5)")
     print("="*60)
@@ -117,8 +113,7 @@ def plot_correlation_heatmap(corr_matrix, title="All 6 Metrics"):
     """Create detailed correlation heatmap"""
     
     fig, ax = plt.subplots(figsize=(10, 8))
-    
-    # Create heatmap
+
     sns.heatmap(corr_matrix, annot=True, fmt='.4f', cmap='coolwarm',
                 center=0, square=True, linewidths=2, cbar_kws={'label': 'Correlation'},
                 vmin=-1, vmax=1, ax=ax)
@@ -135,7 +130,6 @@ def compare_3_vs_6_metrics(df):
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
 
-    # 6-metric correlation
     all_metrics = ["blocking_factor", "betweenness", "pagerank",
                    "logical_depth", "temporal_criticality", "articulation_impact"]
     corr_6 = df[all_metrics].corr()
@@ -144,7 +138,6 @@ def compare_3_vs_6_metrics(df):
                 center=0, square=True, linewidths=1, ax=ax1, vmin=-1, vmax=1, annot_kws={'fontsize': 9})
     ax1.set_title('All 6 Metrics', fontsize=12, pad=10)
 
-    # 3-metric correlation (composite risk score)
     selected_metrics = ["blocking_factor", "betweenness", "pagerank"]
     corr_3 = df[selected_metrics].corr()
 
@@ -184,17 +177,13 @@ def run_full_analysis():
     print("and temporal fragility to identify hidden structural constraints.")
     print("\n")
     
-    # Compute all metrics
     df = compute_all_metrics(DATA_PATH)
-    
-    # Save results
+
     df.to_csv(OUTPUT_PATH, index=False)
     print(f"✓ Full results saved to: {OUTPUT_PATH}\n")
-    
-    # Analyze correlations
+
     corr_matrix = analyze_correlations(df)
-    
-    # Visualizations
+
     print("Generating visualizations...\n")
     
     print("1. Correlation Heatmap (All 6 Metrics)")

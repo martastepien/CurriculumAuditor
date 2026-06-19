@@ -10,21 +10,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 def analyse_pass_rates(save: bool = True) -> pd.DataFrame:
-    # Load data
     curriculum = pd.read_csv(BASE_DIR / "data" / "raw" / "CSE_curriculum_data.csv")
     hidden_deps = pd.read_csv(BASE_DIR / "data" / "processed" / "hidden_dependencies.csv")
 
     # Drop courses without pass rate data (all Year 3 + elective placeholders in Year 2)
     df = curriculum.dropna(subset=["pass_rate_2024"]).copy()
 
-    # Note excluded courses
     excluded = curriculum[curriculum["pass_rate_2024"].isna()]["course_code"].tolist()
 
     # Mark target courses (appear as B in any A → B hidden dependency)
     target_codes = set(hidden_deps["target_course"].unique())
     df["is_target"] = df["course_code"].isin(target_codes)
 
-    # Compute mean and std of pass_rate for non-target courses per year
     year_stats = (
         df[~df["is_target"]]
         .groupby("year")["pass_rate_2024"]
@@ -32,7 +29,6 @@ def analyse_pass_rates(save: bool = True) -> pd.DataFrame:
         .reset_index()
     )
 
-    # Build comparison table for target courses
     targets = (
         df[df["is_target"]][["course_code", "year", "pass_rate_2024", "serious_pass_rate_2024"]]
         .copy()
@@ -42,7 +38,6 @@ def analyse_pass_rates(save: bool = True) -> pd.DataFrame:
     targets["difference"] = targets["pass_rate"] - targets["year_mean_non_targets"]
     targets = targets.sort_values("difference", ascending=True).reset_index(drop=True)
 
-    # Print results
     print("=" * 70)
     print("Pass-Rate Analysis: Hidden Dependency Target Courses vs Year Peers")
     print("=" * 70)
@@ -56,7 +51,6 @@ def analyse_pass_rates(save: bool = True) -> pd.DataFrame:
             + ", ".join(excluded)
         )
 
-    # Top-5 hidden dependencies by similarity score
     print("\n" + "-" * 70)
     print("Top 5 hidden dependencies by cosine similarity, target pass-rate check")
     print("-" * 70)
@@ -88,7 +82,6 @@ def analyse_pass_rates(save: bool = True) -> pd.DataFrame:
             seen_targets[tgt] = "N/A"
             print(f"  {src} -> {tgt}  (sim={sim:.4f}): N/A (no pass-rate data for {tgt})")
 
-    # Save
     if save:
         out_path = BASE_DIR / "data" / "processed" / "pass_rate_analysis.csv"
         targets.to_csv(out_path, index=False)

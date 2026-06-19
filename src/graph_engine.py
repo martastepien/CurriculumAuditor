@@ -2,7 +2,7 @@ import networkx as nx
 import numpy as np
 
 
-# Defining elective groups- like capstone courses
+# elective groups, e.g. capstone courses
 ELECTIVE_GROUPS = {
     "capstone_group": {"2IRR60", "2IRR70", "2IRR80"}
 }
@@ -18,7 +18,6 @@ def get_group_members(node):
             return group
     return None
 
-#longest path
 def compute_longest_path_depth(G):
     if not nx.is_directed_acyclic_graph(G):
         raise ValueError("Graph must be a DAG.")
@@ -35,7 +34,6 @@ def compute_longest_path_depth(G):
 
     return longest
 
-#blocking factor
 def compute_blocking_factor(G):
     credit_attrs = nx.get_node_attributes(G, "credits")
     total_credits = sum(credit_attrs.values()) if credit_attrs else 1
@@ -63,7 +61,6 @@ def compute_blocking_factor(G):
     return blocking
 
 
-#articulation reach impact
 def compute_articulation_reach(G):
 
     roots = [n for n in G.nodes if G.in_degree(n) == 0]
@@ -101,10 +98,8 @@ def compute_articulation_reach(G):
     return impact
 
 
-# Temporal criticality - weighted longest path in QUARTERS
 def compute_temporal_criticality(G):
-    # Weighted longest path in quarters from degree start.
-    # Unlike logical depth (hop count), accounts for scheduling gaps and actual delay potential.
+    # weighted longest path in quarters, not hops, so it captures scheduling gaps too
     if not nx.is_directed_acyclic_graph(G):
         raise ValueError("Temporal criticality requires a DAG.")
     topo = list(nx.topological_sort(G))
@@ -121,7 +116,6 @@ def compute_temporal_criticality(G):
     return max_time_reach
 
 
-# Min max normalization.
 def normalize(metric_dict):
     if not metric_dict:
         return {}
@@ -139,10 +133,8 @@ def normalize(metric_dict):
     }
 
 
-# Multidimensional structural risk: computes all 6 candidate metrics
 def compute_structural_risk_score(G, weights=None, selected_metrics=None):
     """
-    Computes all 6 structural metrics:
     Computes all 6 structural metrics:
     - block:        blocking factor (downstream credit weight)
     - bet:          betweenness centrality
