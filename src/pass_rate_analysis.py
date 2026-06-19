@@ -13,12 +13,12 @@ def analyse_pass_rates(save: bool = True) -> pd.DataFrame:
     curriculum = pd.read_csv(BASE_DIR / "data" / "raw" / "CSE_curriculum_data.csv")
     hidden_deps = pd.read_csv(BASE_DIR / "data" / "processed" / "hidden_dependencies.csv")
 
-    # Drop courses without pass rate data (all Year 3 + elective placeholders in Year 2)
+    # drop courses without pass rate data
     df = curriculum.dropna(subset=["pass_rate_2024"]).copy()
 
     excluded = curriculum[curriculum["pass_rate_2024"].isna()]["course_code"].tolist()
 
-    # Mark target courses (appear as B in any A → B hidden dependency)
+    # target = appears as B in an A -> B hidden dependency
     target_codes = set(hidden_deps["target_course"].unique())
     df["is_target"] = df["course_code"].isin(target_codes)
 

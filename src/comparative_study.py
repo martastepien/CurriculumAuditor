@@ -17,9 +17,9 @@ def load_and_build_dag(csv_path):
         if not quarter_str:
             quarter_str = "1"
         quarter = int(quarter_str.split(",")[0]) if "," in quarter_str else int(quarter_str)
-        
+
         credits_raw = row.get("credits", 5)
-        year_raw    = row.get("year", 1)
+        year_raw = row.get("year", 1)
         G.add_node(
             row["course_code"],
             credits=float(credits_raw) if str(credits_raw).strip() else 5.0,

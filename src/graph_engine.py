@@ -99,11 +99,11 @@ def compute_articulation_reach(G):
 
 
 def compute_temporal_criticality(G):
-    # weighted longest path in quarters, not hops, so it captures scheduling gaps too
+    # weighted by quarters, not hops, so it captures scheduling gaps
     if not nx.is_directed_acyclic_graph(G):
         raise ValueError("Temporal criticality requires a DAG.")
     topo = list(nx.topological_sort(G))
-    
+
     node_time = {
         n: (G.nodes[n]['year'] - 1) * 4 + G.nodes[n]['quarter']
         for n in G.nodes
@@ -136,11 +136,11 @@ def normalize(metric_dict):
 def compute_structural_risk_score(G, weights=None, selected_metrics=None):
     """
     Computes all 6 structural metrics:
-    - block:        blocking factor (downstream credit weight)
-    - bet:          betweenness centrality
-    - pagerank:     PageRank
-    - logical:      longest path depth (hops)
-    - temporal:     temporal criticality (quarters)
+    - block: blocking factor (downstream credit weight)
+    - bet: betweenness centrality
+    - pagerank: PageRank
+    - logical: longest path depth (hops)
+    - temporal: temporal criticality (quarters)
     - articulation: reachability drop on removal
 
     selected_metrics controls which subset is used for the composite score.
@@ -156,11 +156,11 @@ def compute_structural_risk_score(G, weights=None, selected_metrics=None):
         weights = {m: w for m in selected_metrics}
 
     metrics_raw = {
-        "block":        compute_blocking_factor(G),
-        "bet":          nx.betweenness_centrality(G, normalized=True),
-        "pagerank":     nx.pagerank(G, alpha=0.85),
-        "logical":      compute_longest_path_depth(G),
-        "temporal":     compute_temporal_criticality(G),
+        "block": compute_blocking_factor(G),
+        "bet": nx.betweenness_centrality(G, normalized=True),
+        "pagerank": nx.pagerank(G, alpha=0.85),
+        "logical": compute_longest_path_depth(G),
+        "temporal": compute_temporal_criticality(G),
         "articulation": compute_articulation_reach(G),
     }
 

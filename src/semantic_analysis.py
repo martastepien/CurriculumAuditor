@@ -20,10 +20,7 @@ RANDOM_SEED = 42
 
 
 class SemanticCurriculumAnalyzer:
-    """
-    Detects hidden curricular dependencies using Sentence-BERT embeddings. Courses with high semantic similarity but no formal prerequisite edge
-    represent conceptual dependencies the graph doesn't document.
-    """
+    """Finds hidden dependencies via SBERT similarity between courses with no formal prerequisite edge."""
     def __init__(self, csv_path, structural_csv_path, model_name='all-mpnet-base-v2', model=None):
         self.csv_path = pathlib.Path(csv_path)
         self.structural_csv_path = pathlib.Path(structural_csv_path)
@@ -47,7 +44,7 @@ class SemanticCurriculumAnalyzer:
         df = df[~df['course_code'].str.contains("Elective", na=False)].copy()
         df = df.reset_index(drop=True)
 
-        # Multi-quarter entries like "1,2" → use the first quarter for ordering
+        # "1,2" -> use the first quarter
         df['quarter_parsed'] = df['quarter'].apply(
             lambda q: int(str(q).split(',')[0])
         )
@@ -72,7 +69,7 @@ class SemanticCurriculumAnalyzer:
         print(f"Similarity  min: {upper.min():.3f}, max: {upper.max():.3f}, mean: {upper.mean():.3f}")
 
     def detect_hidden_dependencies(self):
-        # top 5% of pairwise similarities, floored at 0.6 to avoid weak edges
+        # top 5%, floored at 0.6 to avoid weak edges
         upper = self.sim_matrix[np.triu_indices_from(self.sim_matrix, k=1)]
         self.threshold = float(max(0.6, np.percentile(upper, 95)))
         print(f"Semantic edge threshold (95th percentile, min 0.6): {self.threshold:.4f}")
@@ -102,11 +99,11 @@ class SemanticCurriculumAnalyzer:
                 if sim < self.threshold:
                     continue
                 ca, cb = self.course_codes[i], self.course_codes[j]
-                if time_key[ca] >= time_key[cb]:  # ca must come strictly before cb
+                if time_key[ca] >= time_key[cb]:  # ca before cb
                     continue
                 if (ca, cb) in formal_edges:
                     continue
-                # Normalize weight relative to threshold: 0 = just above threshold, 1 = strongest
+                # 0 = at threshold, 1 = strongest
                 norm_w = (sim - self.threshold) / (1.0 - self.threshold)
                 ya, qa = time_key[ca]
                 yb, qb = time_key[cb]
@@ -127,8 +124,7 @@ class SemanticCurriculumAnalyzer:
         return self.hidden_deps
 
     def compute_semantic_centrality(self):
-        # For each course, take the mean similarity to its top-3 later courses.
-        # Using top-3 mean rather than a full sum avoids one outlier dominating the score.
+        # mean similarity to top-3 later courses, avoids outlier domination
         time_key = {
             row['course_code']: (int(row['year']), int(row['quarter_parsed']))
             for _, row in self.df.iterrows()
@@ -167,7 +163,7 @@ class SemanticCurriculumAnalyzer:
         ).drop(columns='source_course', errors='ignore')
         sem_df['hidden_dep_count'] = sem_df['hidden_dep_count'].fillna(0).astype(int)
 
-        # Top-3 most content-similar courses per course (temporal order irrelevant here)
+        # top-3 most content-similar courses per course
         top_similar = {}
         for i, code in enumerate(self.course_codes):
             sims = [(self.course_codes[j], float(self.sim_matrix[i][j]))
@@ -180,7 +176,7 @@ class SemanticCurriculumAnalyzer:
             structural_df[['course_code', 'structural_risk']], on='course_code', how='left'
         )
         merged['structural_risk'] = merged['structural_risk'].fillna(0.0).round(4)
-        # Positive divergence = semantically central but structurally invisible (hidden constraint)
+        # positive = semantically central but structurally invisible
         merged['divergence_score'] = (merged['semantic_centrality'] - merged['structural_risk']).round(4)
 
         self.divergence_df = merged[[
@@ -191,8 +187,7 @@ class SemanticCurriculumAnalyzer:
         return self.divergence_df
 
     def compute_structural_semantic_correlation(self):
-        # Pearson for magnitude, Spearman for rank agreement.
-        # Structural risk is not normally distributed, so Spearman is the more robust measure.
+        # Spearman is more robust since risk isn't normally distributed
         x = self.divergence_df['structural_risk']
         y = self.divergence_df['semantic_centrality']
 
@@ -200,7 +195,7 @@ class SemanticCurriculumAnalyzer:
         sr, sp = spearmanr(x, y)
 
         self.correlation = {
-            'pearson':  (round(pr, 4), round(pp, 4)),
+            'pearson': (round(pr, 4), round(pp, 4)),
             'spearman': (round(sr, 4), round(sp, 4)),
         }
 
@@ -226,7 +221,7 @@ class SemanticCurriculumAnalyzer:
         for _, row in self.hidden_deps.iterrows():
             src, tgt, w = row['source_course'], row['target_course'], row['normalized_weight']
             if src in G_aug.nodes and tgt in G_aug.nodes:
-                if not nx.has_path(G_aug, tgt, src):  # skip if it would create a cycle
+                if not nx.has_path(G_aug, tgt, src):  # avoid cycles
                     G_aug.add_edge(src, tgt, weight=w)
                     added += 1
 
@@ -236,15 +231,15 @@ class SemanticCurriculumAnalyzer:
         orig_risk_scores, _ = ge.compute_structural_risk_score(G_orig)
 
         orig_rank = {c: r + 1 for r, c in enumerate(sorted(orig_risk_scores, key=orig_risk_scores.get, reverse=True))}
-        aug_rank  = {c: r + 1 for r, c in enumerate(sorted(aug_risk_scores,  key=aug_risk_scores.get,  reverse=True))}
+        aug_rank = {c: r + 1 for r, c in enumerate(sorted(aug_risk_scores, key=aug_risk_scores.get, reverse=True))}
 
         records = [{
-            'course_code':    code,
-            'original_risk':  round(orig_risk_scores[code], 4),
-            'augmented_risk': round(aug_risk_scores[code],  4),
-            'original_rank':  orig_rank[code],
+            'course_code': code,
+            'original_risk': round(orig_risk_scores[code], 4),
+            'augmented_risk': round(aug_risk_scores[code], 4),
+            'original_rank': orig_rank[code],
             'augmented_rank': aug_rank[code],
-            'rank_shift':     orig_rank[code] - aug_rank[code],
+            'rank_shift': orig_rank[code] - aug_rank[code],
         } for code in orig_risk_scores]
 
         aug_df = pd.DataFrame(records).sort_values('rank_shift', ascending=False)
@@ -300,12 +295,7 @@ class SemanticCurriculumAnalyzer:
 
 
 def run_personal_semantic_pipeline(personal_csv_path, reuse_model, output_dir):
-    """
-    Runs the semantic hidden-dependency pipeline on the personal curriculum,
-    reusing an already-loaded SBERT model to avoid a second heavy model load.
-    Uses the personal DAG's own structural risk scores for divergence computation.
-    Returns the SemanticCurriculumAnalyzer instance.
-    """
+    """Runs the pipeline on the personal curriculum, reusing the already-loaded SBERT model."""
     personal_csv_path = pathlib.Path(personal_csv_path)
     output_dir = pathlib.Path(output_dir)
 
@@ -322,7 +312,7 @@ def run_personal_semantic_pipeline(personal_csv_path, reuse_model, output_dir):
 
     analyzer = SemanticCurriculumAnalyzer(
         personal_csv_path,
-        structural_csv_path=personal_csv_path,  # not read from disk; overridden below
+        structural_csv_path=personal_csv_path,  # overridden below
         model=reuse_model
     )
 
@@ -347,10 +337,10 @@ def run_personal_semantic_pipeline(personal_csv_path, reuse_model, output_dir):
 
 
 if __name__ == "__main__":
-    CSV_PATH        = BASE_DIR / "data" / "raw" / "CSE_curriculum_data.csv"
+    CSV_PATH = BASE_DIR / "data" / "raw" / "CSE_curriculum_data.csv"
     STRUCTURAL_PATH = BASE_DIR / "data" / "processed" / "structural_risk_baseline.csv"
-    PERSONAL_PATH   = BASE_DIR / "data" / "raw" / "personal_CSE_curriculum.csv"
-    OUTPUT_DIR      = BASE_DIR / "data" / "processed"
+    PERSONAL_PATH = BASE_DIR / "data" / "raw" / "personal_CSE_curriculum.csv"
+    OUTPUT_DIR = BASE_DIR / "data" / "processed"
 
     analyzer = SemanticCurriculumAnalyzer(CSV_PATH, STRUCTURAL_PATH)
     analyzer.run_pipeline()

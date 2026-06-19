@@ -34,7 +34,7 @@ def _load_data():
     year_stats = {}
     year_targets = {}
     for year in (1, 2):
-        # mean/std over all courses with data, targets included, matches the thesis numbers
+        # mean/std over all courses with data, targets included
         year_df = has_rate[has_rate["year"] == year]
         year_stats[year] = (year_df["pass_rate_2024"].mean(), year_df["pass_rate_2024"].std())
         targets = year_df[year_df["course_code"].isin(target_codes)]

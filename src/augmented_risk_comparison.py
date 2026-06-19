@@ -20,17 +20,13 @@ import graph_engine as ge
 from comparative_study import load_and_build_dag
 
 BASE_DIR = pathlib.Path(__file__).resolve().parent.parent
-CURRICULUM_CSV  = BASE_DIR / "data" / "raw"  / "CSE_curriculum_data.csv"
+CURRICULUM_CSV = BASE_DIR / "data" / "raw" / "CSE_curriculum_data.csv"
 HIDDEN_DEPS_CSV = BASE_DIR / "data" / "processed" / "hidden_dependencies.csv"
-OUTPUT_CSV      = BASE_DIR / "data" / "processed" / "augmented_risk_recomputed.csv"
+OUTPUT_CSV = BASE_DIR / "data" / "processed" / "augmented_risk_recomputed.csv"
 
 
 def build_augmented_dag(base_dag: nx.DiGraph, hidden_deps: pd.DataFrame) -> nx.DiGraph:
-    """
-    Clone the base DAG and add every semantic edge from hidden_deps that
-    (a) connects two existing nodes and (b) does not introduce a cycle.
-    Direction: source_course → target_course (same convention as formal prereqs).
-    """
+    """Clone the base DAG and add semantic edges from hidden_deps that don't create a cycle."""
     G = base_dag.copy()
     added = skipped_missing = skipped_cycle = 0
 
@@ -60,39 +56,35 @@ def compute_risk_df(G: nx.DiGraph) -> pd.DataFrame:
 
 
 def plot_top10_comparison(before_df: pd.DataFrame, after_df: pd.DataFrame, top_n: int = 10):
-    """
-    Side-by-side grouped bar chart.
-    Shows the union of top-N courses from both rankings with their
-    before/after scores as adjacent bars for each course.
-    """
+    """Grouped bar chart of before/after risk for the union of both top-N rankings."""
     top_before = set(before_df.head(top_n)["course_code"])
-    top_after  = set(after_df.head(top_n)["course_code"])
+    top_after = set(after_df.head(top_n)["course_code"])
     union_codes = list(top_before | top_after)
 
     before_map = dict(zip(before_df["course_code"], before_df["structural_risk"]))
-    after_map  = dict(zip(after_df["course_code"],  after_df["structural_risk"]))
+    after_map = dict(zip(after_df["course_code"], after_df["structural_risk"]))
 
     rank_before = {c: i for i, c in enumerate(before_df["course_code"])}
-    # Sort by augmented rank so the biggest post-augmentation risks read left to right
+    # sort by augmented rank, biggest risks read left to right
     rank_after_sort = {c: i for i, c in enumerate(after_df["course_code"])}
     union_codes.sort(key=lambda c: rank_after_sort.get(c, 9999))
 
     before_vals = [before_map.get(c, 0.0) for c in union_codes]
-    after_vals  = [after_map.get(c,  0.0) for c in union_codes]
+    after_vals = [after_map.get(c, 0.0) for c in union_codes]
 
-    n      = len(union_codes)
-    x      = np.arange(n)
-    width  = 0.35
+    n = len(union_codes)
+    x = np.arange(n)
+    width = 0.35
 
-    color_before = "#4C72B0"   # TU/e blue
-    color_after  = "#DD8452"   # warm orange
+    color_before = "#4C72B0"  # TU/e blue
+    color_after = "#DD8452"  # warm orange
 
     fig, ax = plt.subplots(figsize=(14, 6))
 
     bars_b = ax.bar(x - width / 2, before_vals, width, label="Before augmentation",
                     color=color_before, edgecolor="white", linewidth=0.6, zorder=3)
-    bars_a = ax.bar(x + width / 2, after_vals,  width, label="After augmentation",
-                    color=color_after,  edgecolor="white", linewidth=0.6, zorder=3)
+    bars_a = ax.bar(x + width / 2, after_vals, width, label="After augmentation",
+                    color=color_after, edgecolor="white", linewidth=0.6, zorder=3)
 
     # Annotate bars whose rank changed noticeably
     rank_after = {c: i for i, c in enumerate(after_df["course_code"])}
@@ -135,16 +127,16 @@ def plot_top10_comparison(before_df: pd.DataFrame, after_df: pd.DataFrame, top_n
 
 
 def main():
-    print("Building base DAG …")
+    print("Building base DAG...")
     G_base = load_and_build_dag(CURRICULUM_CSV)
     before_df = compute_risk_df(G_base)
     print(f"Base graph: {G_base.number_of_nodes()} nodes, {G_base.number_of_edges()} edges")
 
-    print("\nLoading hidden semantic dependencies …")
+    print("\nLoading hidden semantic dependencies...")
     hidden_deps = pd.read_csv(HIDDEN_DEPS_CSV)
     print(f"  {len(hidden_deps)} semantic edges found")
 
-    print("\nBuilding augmented DAG …")
+    print("\nBuilding augmented DAG...")
     G_aug = build_augmented_dag(G_base, hidden_deps)
     after_df = compute_risk_df(G_aug)
     print(f"Augmented graph: {G_aug.number_of_nodes()} nodes, {G_aug.number_of_edges()} edges")
@@ -154,8 +146,8 @@ def main():
         on="course_code", how="outer"
     ).fillna(0)
     merged["rank_before"] = merged["risk_before"].rank(ascending=False, method="min").astype(int)
-    merged["rank_after"]  = merged["risk_after"].rank(ascending=False, method="min").astype(int)
-    merged["rank_shift"]  = merged["rank_before"] - merged["rank_after"]
+    merged["rank_after"] = merged["risk_after"].rank(ascending=False, method="min").astype(int)
+    merged["rank_shift"] = merged["rank_before"] - merged["rank_after"]
     merged = merged.sort_values("risk_before", ascending=False)
     merged.to_csv(OUTPUT_CSV, index=False)
     print(f"\nFull comparison saved → {OUTPUT_CSV}")
@@ -169,7 +161,7 @@ def main():
     changed = merged[merged["rank_shift"].abs() >= 2].sort_values("rank_shift", ascending=False)
     print(changed[["course_code", "risk_before", "risk_after", "rank_before", "rank_after", "rank_shift"]].to_string(index=False))
 
-    print("\nGenerating comparison chart …")
+    print("\nGenerating comparison chart...")
     plot_top10_comparison(before_df, after_df, top_n=10)
 
 

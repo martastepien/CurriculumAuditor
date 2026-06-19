@@ -25,16 +25,14 @@ ALL_METRICS = ['blocking_factor', 'betweenness', 'pagerank', 'logical_depth',
                'temporal_criticality', 'articulation_impact']
 
 METRIC_LABELS = {
-    'blocking_factor':      'Blocking\nFactor',
-    'betweenness':          'Betweenness',
-    'pagerank':             'PageRank',
-    'logical_depth':        'Logical\nDepth',
+    'blocking_factor': 'Blocking\nFactor',
+    'betweenness': 'Betweenness',
+    'pagerank': 'PageRank',
+    'logical_depth': 'Logical\nDepth',
     'temporal_criticality': 'Temporal\nCriticality',
-    'articulation_impact':  'Articulation\nImpact',
+    'articulation_impact': 'Articulation\nImpact',
 }
 
-
-# --- loaders ---
 
 def load_structural_results():
     path = BASE_DIR / "data" / "processed" / "structural_risk_baseline.csv"
@@ -45,15 +43,15 @@ def load_structural_results():
 
 def load_personal_curriculum():
     personal_path = BASE_DIR / "data" / "raw" / "personal_CSE_curriculum.csv"
-    main_path     = BASE_DIR / "data" / "raw" / "CSE_curriculum_data.csv"
+    main_path = BASE_DIR / "data" / "raw" / "CSE_curriculum_data.csv"
 
     if not personal_path.exists():
         return None
 
     personal_df = pd.read_csv(personal_path)
-    main_df     = pd.read_csv(main_path)
+    main_df = pd.read_csv(main_path)
 
-    # Map elective placeholder slots by year/quarter so we can display real course codes
+    # map elective placeholder slots by year/quarter to real course codes
     slots = defaultdict(list)
     for _, row in main_df.iterrows():
         code = str(row['course_code'])
@@ -61,7 +59,7 @@ def load_personal_curriculum():
             q = int(str(row['quarter']).split(',')[0])
             slots[(int(row['year']), q)].append(code)
 
-    label_map  = {}
+    label_map = {}
     slot_usage = defaultdict(int)
 
     for _, row in personal_df.iterrows():
@@ -71,9 +69,9 @@ def load_personal_curriculum():
         code = str(code)
         is_elective = bool(row.get('is_elective', False))
         if is_elective and not pd.isna(row.get('year')) and not pd.isna(row.get('quarter')):
-            q    = int(str(row['quarter']).split(',')[0])
+            q = int(str(row['quarter']).split(',')[0])
             year = int(row['year'])
-            key  = (year, q)
+            key = (year, q)
             available = slots.get(key, [])
             idx = slot_usage[key]
             if idx < len(available):
@@ -88,34 +86,32 @@ def load_personal_curriculum():
 def _best_metric_subset(corr_matrix, metrics, n):
     best_subset, best_score = None, float('inf')
     for subset in combinations(metrics, n):
-        sub   = corr_matrix.loc[list(subset), list(subset)]
-        k     = len(subset)
+        sub = corr_matrix.loc[list(subset), list(subset)]
+        k = len(subset)
         score = (sub.abs().sum().sum() - k) / (k * (k - 1))
         if score < best_score:
             best_score, best_subset = score, subset
     return list(best_subset), best_score
 
 
-# --- DAG plot ---
-
-COL_GAP     = 6.0
-ROW_GAP     = 14.0
+COL_GAP = 6.0
+ROW_GAP = 14.0
 NODE_SPREAD = 3.0
 
 
 def _dag_layout(G):
     slot_counts = defaultdict(int)
-    slot_index  = defaultdict(int)
+    slot_index = defaultdict(int)
     for n in G.nodes():
         slot_counts[(G.nodes[n]['year'], G.nodes[n]['quarter'])] += 1
 
     pos = {}
     for n in G.nodes():
-        year    = G.nodes[n]['year']
+        year = G.nodes[n]['year']
         quarter = G.nodes[n]['quarter']
-        key     = (year, quarter)
-        count   = slot_counts[key]
-        idx     = slot_index[key]
+        key = (year, quarter)
+        count = slot_counts[key]
+        idx = slot_index[key]
         slot_index[key] += 1
         x = float(quarter) * COL_GAP
         y = -year * ROW_GAP + (idx - (count - 1) / 2) * NODE_SPREAD
@@ -126,7 +122,7 @@ def _dag_layout(G):
 def _draw_dag_on_ax(G, ax, title):
     pos = _dag_layout(G)
 
-    # Draw edges first so ellipses render on top and hide the endpoints cleanly
+    # draw edges first so node boxes render on top, hiding endpoints
     edge_styles = []
     for u, v in G.edges():
         if abs(pos[u][0] - pos[v][0]) < 1.0:
@@ -172,7 +168,7 @@ def _draw_dag_on_ax(G, ax, title):
 
 
 def plot_dag():
-    DATA_PATH     = BASE_DIR / "data" / "raw" / "CSE_curriculum_data.csv"
+    DATA_PATH = BASE_DIR / "data" / "raw" / "CSE_curriculum_data.csv"
     PERSONAL_PATH = BASE_DIR / "data" / "raw" / "personal_CSE_curriculum.csv"
 
     G_main = load_and_build_dag(DATA_PATH)
@@ -190,10 +186,8 @@ def plot_dag():
         plt.show()
 
 
-# --- structural plots ---
-
 def plot_top_structural_risk(top_n=10):
-    df  = load_structural_results()
+    df = load_structural_results()
     top = df.sort_values("structural_risk", ascending=False).head(top_n)
 
     plt.figure()
@@ -211,7 +205,7 @@ def plot_metric_correlations(n_select=3):
     if personal_courses is not None:
         df = df[df['course_code'].isin(personal_courses.keys())]
 
-    available   = [m for m in ALL_METRICS if m in df.columns and df[m].std() > 0]
+    available = [m for m in ALL_METRICS if m in df.columns and df[m].std() > 0]
     corr_matrix = df[available].corr()
 
     selected, avg_corr = _best_metric_subset(corr_matrix, available, n_select)
@@ -273,11 +267,11 @@ def plot_personal_curriculum_risk():
     ax1.invert_yaxis()
     ax1.grid(axis='x', alpha=0.3)
     ax1.legend(handles=[
-        mpatches.Patch(color='red',       label='In my curriculum'),
+        mpatches.Patch(color='red', label='In my curriculum'),
         mpatches.Patch(color='steelblue', label='Not in my curriculum'),
     ], fontsize=9)
 
-    # Panel 2: all personal courses ranked, including electives which score 0
+    # Panel 2: all personal courses, including electives (score 0)
     ax2.barh(range(len(personal_df)), personal_df['structural_risk'], color='coral')
     ax2.set_yticks(range(len(personal_df)))
     ax2.set_yticklabels(personal_df['display_code'])
@@ -296,10 +290,8 @@ def plot_personal_curriculum_risk():
     print(f"Highest risk: {top_course['display_code']} ({top_course['structural_risk']:.3f})")
 
 
-# --- semantic plots (called from semantic_analysis.py after the pipeline runs) ---
-
 def plot_similarity_heatmap(sim_matrix, course_codes, df):
-    # Sort courses chronologically so you can see how similarity clusters by year
+    # sort chronologically to see similarity clusters by year
     sort_key = {
         row['course_code']: int(row['year']) * 10 + int(row['quarter_parsed'])
         for _, row in df.iterrows()
@@ -322,19 +314,23 @@ def plot_similarity_heatmap(sim_matrix, course_codes, df):
 
 
 def plot_divergence_scatter(divergence_df):
-    # Four quadrants split at medians, data-driven boundaries rather than fixed cutoffs
-    df    = divergence_df.copy()
-    x     = df['structural_risk']
-    y     = df['semantic_centrality']
+    # four quadrants split at medians, not fixed cutoffs
+    df = divergence_df.copy()
+    x = df['structural_risk']
+    y = df['semantic_centrality']
     x_mid = x.median()
     y_mid = y.median()
 
     colors = []
     for xi, yi in zip(x, y):
-        if   xi < x_mid and yi >= y_mid:  colors.append('crimson')      # hidden constraint
-        elif xi >= x_mid and yi >= y_mid:  colors.append('darkorange')   # doubly visible
-        elif xi < x_mid and yi < y_mid:    colors.append('steelblue')    # background
-        else:                              colors.append('forestgreen')  # structural-only
+        if xi < x_mid and yi >= y_mid:
+            colors.append('crimson')  # hidden constraint
+        elif xi >= x_mid and yi >= y_mid:
+            colors.append('darkorange')  # doubly visible
+        elif xi < x_mid and yi < y_mid:
+            colors.append('steelblue')  # background
+        else:
+            colors.append('forestgreen')  # structural-only
 
     fig, ax = plt.subplots(figsize=(11, 9))
     ax.scatter(x, y, c=colors, s=90, alpha=0.85, zorder=3)
@@ -349,17 +345,17 @@ def plot_divergence_scatter(divergence_df):
 
     ax.text(x_mid * 0.05, y_mid * 1.6, "Hidden constraints\n(semantic-only)",
             fontsize=8, color='crimson', alpha=0.7)
-    ax.text(x_mid * 1.3,  y_mid * 1.6, "Doubly visible\n(both high)",
+    ax.text(x_mid * 1.3, y_mid * 1.6, "Doubly visible\n(both high)",
             fontsize=8, color='darkorange', alpha=0.7)
     ax.text(x_mid * 0.05, y_mid * 0.2, "Background\n(both low)",
             fontsize=8, color='steelblue', alpha=0.7)
-    ax.text(x_mid * 1.3,  y_mid * 0.2, "Structural-only\nrisk",
+    ax.text(x_mid * 1.3, y_mid * 0.2, "Structural-only\nrisk",
             fontsize=8, color='forestgreen', alpha=0.7)
 
     ax.legend(handles=[
-        mpatches.Patch(color='crimson',     label='Hidden constraint (low struct, high sem)'),
-        mpatches.Patch(color='darkorange',  label='Doubly visible (both high)'),
-        mpatches.Patch(color='steelblue',   label='Background (both low)'),
+        mpatches.Patch(color='crimson', label='Hidden constraint (low struct, high sem)'),
+        mpatches.Patch(color='darkorange', label='Doubly visible (both high)'),
+        mpatches.Patch(color='steelblue', label='Background (both low)'),
         mpatches.Patch(color='forestgreen', label='Structural-only risk'),
     ], fontsize=8, loc='upper right')
 
@@ -431,7 +427,7 @@ def plot_personal_semantic_graph(
                            THRESHOLD_PERSONAL, elective_codes=elective_codes)
 
     ax2.legend(handles=[
-        mpatches.Patch(color=NODE_COLOR_DEFAULT,  label='Required course'),
+        mpatches.Patch(color=NODE_COLOR_DEFAULT, label='Required course'),
         mpatches.Patch(color=NODE_COLOR_ELECTIVE, label='Elective'),
     ], loc='lower right', fontsize=18)
 
@@ -441,14 +437,14 @@ def plot_personal_semantic_graph(
 
 def plot_concept_clusters(embeddings, cluster_labels, course_codes, divergence_df, n_clusters=5):
     # PCA to 2D for visual inspection of thematic groupings.
-    # Node size scales with structural risk so high-risk courses are easy to spot.
-    pca   = PCA(n_components=2, random_state=RANDOM_SEED)
+    # node size scales with structural risk
+    pca = PCA(n_components=2, random_state=RANDOM_SEED)
     coords = pca.fit_transform(embeddings)
     var_explained = sum(pca.explained_variance_ratio_) * 100
 
-    risk_lookup  = dict(zip(divergence_df['course_code'], divergence_df['structural_risk']))
-    cluster_arr  = np.array([cluster_labels[c] for c in course_codes])
-    sizes        = np.array([50 + risk_lookup.get(c, 0) * 600 for c in course_codes])
+    risk_lookup = dict(zip(divergence_df['course_code'], divergence_df['structural_risk']))
+    cluster_arr = np.array([cluster_labels[c] for c in course_codes])
+    sizes = np.array([50 + risk_lookup.get(c, 0) * 600 for c in course_codes])
 
     fig, ax = plt.subplots(figsize=(12, 9))
     scatter = ax.scatter(coords[:, 0], coords[:, 1],
@@ -470,8 +466,6 @@ def plot_concept_clusters(embeddings, cluster_labels, course_codes, divergence_d
     plt.tight_layout()
     plt.show()
 
-
-# --- semantic analysis plots (CSV-based) ---
 
 def plot_top_semantic_similarity(top_n=20):
     dep_path = BASE_DIR / "data" / "processed" / "hidden_dependencies.csv"
@@ -609,24 +603,22 @@ def plot_personal_top_hidden_deps(top_n=15):
     plt.show()
 
 
-# --- combined structural + semantic comparison plots (CSV-based) ---
-
 def plot_full_risk_comparison(top_n=15):
     sem_path = BASE_DIR / "data" / "processed" / "semantic_analysis.csv"
     if not sem_path.exists():
         print("Semantic analysis not found. Run semantic_analysis.py first.")
         return
 
-    sem_df    = pd.read_csv(sem_path).drop(columns=['structural_risk'], errors='ignore')
+    sem_df = pd.read_csv(sem_path).drop(columns=['structural_risk'], errors='ignore')
     struct_df = load_structural_results()
-    merged    = sem_df.merge(struct_df[['course_code', 'structural_risk']], on='course_code', how='left')
+    merged = sem_df.merge(struct_df[['course_code', 'structural_risk']], on='course_code', how='left')
 
     top_struct_codes = set(merged.nlargest(top_n, 'structural_risk')['course_code'])
-    top_sem_codes    = set(merged.nlargest(top_n, 'semantic_centrality')['course_code'])
-    both             = top_struct_codes & top_sem_codes
+    top_sem_codes = set(merged.nlargest(top_n, 'semantic_centrality')['course_code'])
+    both = top_struct_codes & top_sem_codes
 
     top_struct = merged.nlargest(top_n, 'structural_risk')
-    top_sem    = merged.nlargest(top_n, 'semantic_centrality')
+    top_sem = merged.nlargest(top_n, 'semantic_centrality')
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 7))
 
@@ -649,7 +641,7 @@ def plot_full_risk_comparison(top_n=15):
     ax2.grid(axis='x', alpha=0.3)
 
     fig.legend(handles=[
-        mpatches.Patch(color='crimson',   label='Appears in both rankings'),
+        mpatches.Patch(color='crimson', label='Appears in both rankings'),
         mpatches.Patch(color='steelblue', label='Single-dimension only'),
     ], loc='lower center', ncol=2, fontsize=10)
     plt.suptitle("Structural vs semantic risk: dual ranking comparison", fontsize=14, fontweight='bold')
@@ -668,20 +660,20 @@ def plot_augmented_vs_original(top_n=15):
     changed = aug_df.sort_values('augmented_rank', ascending=True).head(top_n)
 
     courses = changed['course_code'].tolist()
-    orig    = changed['original_risk'].tolist()
-    augr    = changed['augmented_risk'].tolist()
-    deltas  = [a - o for a, o in zip(augr, orig)]
+    orig = changed['original_risk'].tolist()
+    augr = changed['augmented_risk'].tolist()
+    deltas = [a - o for a, o in zip(augr, orig)]
 
     x = np.arange(len(courses))
     w = 0.35
 
     fig, ax = plt.subplots(figsize=(16, 8))
 
-    ax.bar(x - w/2, orig, width=w, color='steelblue',  alpha=0.9, label='Before augmentation')
+    ax.bar(x - w/2, orig, width=w, color='steelblue', alpha=0.9, label='Before augmentation')
     ax.bar(x + w/2, augr, width=w, color='darkorange', alpha=0.9, label='After augmentation')
 
     for i, (o, a, d) in enumerate(zip(orig, augr, deltas)):
-        sign  = '+' if d > 0 else ''
+        sign = '+' if d > 0 else ''
         color = '#2a9d2a' if d > 0 else ('#cc2222' if d < 0 else '#888888')
         label = f'{sign}{d:.3f}' if abs(d) >= 0.001 else 'unchanged'
         ax.annotate(label,
@@ -785,8 +777,8 @@ def plot_personal_top_structural_risk(top_n=20, include_all_electives=False, ens
     top_personal = full_personal.head(effective_top_n).copy()
 
     # Use visually distinct colors and add a thin edge for clarity
-    required_color = '#4C72B0'   # blue (mandatory)
-    elective_color = '#2ca02c'   # green (elective)
+    required_color = '#4C72B0'  # blue (mandatory)
+    elective_color = '#2ca02c'  # green (elective)
 
     fig1, ax1 = plt.subplots(figsize=(10, 6))
 
@@ -798,8 +790,7 @@ def plot_personal_top_structural_risk(top_n=20, include_all_electives=False, ens
     ax1.set_ylabel('Structural risk')
     ax1.set_title(f'Top {effective_top_n}: official curriculum')
 
-    # Build the personal panel dataset. By default keep exactly top_n; if
-    # include_all_electives is True, append elective courses and re-sort.
+    # keep exactly top_n, unless include_all_electives appends and re-sorts
     if include_all_electives:
         elective_codes = [c for c, v in elective_lookup.items() if v]
         elective_rows = [
@@ -879,9 +870,9 @@ def plot_personal_empirical_risk():
     y_mid = official_df['semantic_centrality'].median()
 
     group_styles = {
-        'official_only': ('lightgray',  'Official only'),
-        'both':          ('steelblue',  'In both curricula'),
-        'personal_only': ('coral',      'Personal only'),
+        'official_only': ('lightgray', 'Official only'),
+        'both': ('steelblue', 'In both curricula'),
+        'personal_only': ('coral', 'Personal only'),
     }
 
     fig, ax = plt.subplots(figsize=(11, 8))

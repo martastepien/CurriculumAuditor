@@ -11,37 +11,37 @@ def compute_all_metrics(csv_path):
     """Load curriculum and compute all 6 structural risk metrics"""
     df = pd.read_csv(csv_path)
     df = df.fillna("")
-    
+
     G = nx.DiGraph()
 
     for _, row in df.iterrows():
-        # Handle multi-quarter courses (e.g., "1,2") by taking first quarter
+        # "1,2" -> use the first quarter
         quarter_str = str(row.get("quarter", "1"))
         quarter = int(quarter_str.split(",")[0]) if "," in quarter_str else int(quarter_str)
-        
+
         G.add_node(
             row["course_code"],
             credits=float(row.get("credits", 5)),
             year=int(row.get("year", 1)),
             quarter=quarter
         )
-    
+
     for _, row in df.iterrows():
         target = row["course_code"]
         prereqs = str(row.get("prerequisites_formal", ""))
-        
+
         if prereqs:
             for p in prereqs.split(","):
                 p_clean = p.strip()
                 if p_clean in G.nodes:
                     G.add_edge(p_clean, target)
-    
+
     if not nx.is_directed_acyclic_graph(G):
         raise ValueError("Curriculum contains cycles.")
-    
+
     print(f"Graph built: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges\n")
-    
-    # Compute ALL 7 metrics (including both logical and temporal depth)
+
+    # compute all 7 metrics, including logical and temporal depth
     print("Computing all 7 metrics...")
     metrics_raw = {
         "blocking_factor": ge.compute_blocking_factor(G),
@@ -51,7 +51,7 @@ def compute_all_metrics(csv_path):
         "temporal_criticality": ge.compute_temporal_criticality(G),
         "articulation_impact": ge.compute_articulation_reach(G)
     }
-    
+
     metrics = {
         name: ge.normalize(values)
         for name, values in metrics_raw.items()
@@ -70,28 +70,28 @@ def compute_all_metrics(csv_path):
             "year": G.nodes[node]["year"],
             "quarter": G.nodes[node]["quarter"]
         })
-    
+
     return pd.DataFrame(results)
 
 
 def analyze_correlations(df):
     """Analyze correlation matrix to identify redundant metrics"""
-    
-    metrics = ["blocking_factor", "betweenness", "pagerank", 
+
+    metrics = ["blocking_factor", "betweenness", "pagerank",
                "logical_depth", "temporal_criticality", "articulation_impact"]
-    
+
     corr_matrix = df[metrics].corr()
-    
+
     print("="*60)
     print("CORRELATION MATRIX (All 6 Metrics)")
     print("="*60)
     print(corr_matrix.round(4))
     print("\n")
-    
+
     print("="*60)
     print("HIGH CORRELATIONS (|r| > 0.5)")
     print("="*60)
-    
+
     redundant_pairs = []
     for i, metric1 in enumerate(metrics):
         for j, metric2 in enumerate(metrics):
@@ -100,27 +100,27 @@ def analyze_correlations(df):
                 if abs(corr_val) > 0.5:
                     redundant_pairs.append((metric1, metric2, corr_val))
                     print(f"{metric1:25s} ↔ {metric2:25s}: {corr_val:7.4f}")
-    
+
     if not redundant_pairs:
         print("No high correlations found (all |r| < 0.5)")
 
     print("\n")
-    
+
     return corr_matrix
 
 
 def plot_correlation_heatmap(corr_matrix, title="All 6 Metrics"):
     """Create detailed correlation heatmap"""
-    
+
     fig, ax = plt.subplots(figsize=(10, 8))
 
     sns.heatmap(corr_matrix, annot=True, fmt='.4f', cmap='coolwarm',
                 center=0, square=True, linewidths=2, cbar_kws={'label': 'Correlation'},
                 vmin=-1, vmax=1, ax=ax)
-    
+
     plt.title(f'Metric Correlation Matrix: {title}',
               fontsize=14, pad=20)
-    
+
     plt.tight_layout()
     plt.show()
 
@@ -164,11 +164,11 @@ def compare_3_vs_6_metrics(df):
 
 def run_full_analysis():
     """Run complete redundancy analysis"""
-    
+
     BASE_DIR = pathlib.Path(__file__).resolve().parent.parent
     DATA_PATH = BASE_DIR / "data" / "raw" / "CSE_curriculum_data.csv"
     OUTPUT_PATH = BASE_DIR / "data" / "processed" / "all_metrics_analysis.csv"
-    
+
     print("="*60)
     print("STRUCTURAL RISK METRIC REDUNDANCY ANALYSIS")
     print("="*60)
@@ -176,7 +176,7 @@ def run_full_analysis():
     print("multidimensional risk approach: combining logical complexity")
     print("and temporal fragility to identify hidden structural constraints.")
     print("\n")
-    
+
     df = compute_all_metrics(DATA_PATH)
 
     df.to_csv(OUTPUT_PATH, index=False)
@@ -185,10 +185,10 @@ def run_full_analysis():
     corr_matrix = analyze_correlations(df)
 
     print("Generating visualizations...\n")
-    
+
     print("1. Correlation Heatmap (All 6 Metrics)")
     plot_correlation_heatmap(corr_matrix, "All 6 Metrics")
-    
+
     print("2. 3-Metric vs 6-Metric Comparison")
     compare_3_vs_6_metrics(df)
 
