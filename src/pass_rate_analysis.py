@@ -38,22 +38,18 @@ def analyse_pass_rates(save: bool = True) -> pd.DataFrame:
     targets["difference"] = targets["pass_rate"] - targets["year_mean_non_targets"]
     targets = targets.sort_values("difference", ascending=True).reset_index(drop=True)
 
-    print("=" * 70)
-    print("Pass-Rate Analysis: Hidden Dependency Target Courses vs Year Peers")
-    print("=" * 70)
+    print("Pass-rate analysis: hidden dependency target courses vs year peers")
 
     pd.set_option("display.float_format", "{:.4f}".format)
     print(targets.to_string(index=False))
 
     if excluded:
         print(
-            f"\nWARNING: {len(excluded)} courses excluded (null pass_rate_2024): "
+            f"\nWarning: {len(excluded)} courses excluded (null pass_rate_2024): "
             + ", ".join(excluded)
         )
 
-    print("\n" + "-" * 70)
-    print("Top 5 hidden dependencies by cosine similarity, target pass-rate check")
-    print("-" * 70)
+    print("\nTop 5 hidden dependencies by cosine similarity, target pass-rate check:")
 
     top5 = hidden_deps.nlargest(5, "similarity_score").reset_index(drop=True)
 

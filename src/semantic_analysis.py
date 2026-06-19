@@ -259,9 +259,7 @@ class SemanticCurriculumAnalyzer:
         OUTPUT_DIR = BASE_DIR / "data" / "processed"
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-        print("=" * 60)
-        print("SEMANTIC CURRICULUM ANALYSIS PIPELINE")
-        print("=" * 60)
+        print("Semantic curriculum analysis pipeline")
 
         print("\n[1/6] Loading and encoding courses...")
         self.load_and_encode()
@@ -288,7 +286,7 @@ class SemanticCurriculumAnalyzer:
 
         print(f"\nSaved outputs to {OUTPUT_DIR}/")
 
-        print("\n--- Top 5 hidden constraints (high semantic centrality, low structural risk) ---")
+        print("\nTop 5 hidden constraints (high semantic centrality, low structural risk):")
         print(self.divergence_df.head(5)[
             ['course_code', 'semantic_centrality', 'structural_risk', 'divergence_score']
         ].to_string(index=False))
@@ -299,9 +297,7 @@ def run_personal_semantic_pipeline(personal_csv_path, reuse_model, output_dir):
     personal_csv_path = pathlib.Path(personal_csv_path)
     output_dir = pathlib.Path(output_dir)
 
-    print("\n" + "=" * 60)
-    print("PERSONAL CURRICULUM SEMANTIC PIPELINE")
-    print("=" * 60)
+    print("\nPersonal curriculum semantic pipeline")
 
     G_personal = load_and_build_dag(personal_csv_path)
     personal_risk_scores, _ = ge.compute_structural_risk_score(G_personal)

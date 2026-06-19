@@ -129,7 +129,7 @@ def main():
     before_df = compute_risk_df(G_base)
     print(f"Base graph: {G_base.number_of_nodes()} nodes, {G_base.number_of_edges()} edges")
 
-    print("\nLoading hidden semantic dependencies..")
+    print("\nLoading hidden semantic dependencies...")
     hidden_deps = pd.read_csv(HIDDEN_DEPS_CSV)
     print(f"  {len(hidden_deps)} semantic edges found")
 
