@@ -82,15 +82,10 @@ def analyze_correlations(df):
 
     corr_matrix = df[metrics].corr()
 
-    print("="*60)
-    print("CORRELATION MATRIX (All 6 Metrics)")
-    print("="*60)
+    print("\nCorrelation matrix (all 6 metrics):")
     print(corr_matrix.round(4))
-    print("\n")
 
-    print("="*60)
-    print("HIGH CORRELATIONS (|r| > 0.5)")
-    print("="*60)
+    print("\nHigh correlations (|r| > 0.5):")
 
     redundant_pairs = []
     for i, metric1 in enumerate(metrics):
@@ -103,8 +98,6 @@ def analyze_correlations(df):
 
     if not redundant_pairs:
         print("No high correlations found (all |r| < 0.5)")
-
-    print("\n")
 
     return corr_matrix
 
@@ -149,17 +142,15 @@ def compare_3_vs_6_metrics(df):
     plt.tight_layout()
     plt.show()
 
-    print("="*60)
-    print("CORRELATION COMPARISON")
-    print("="*60)
-    print(f"\n6-Metric Approach (All candidates):")
+    print("\nCorrelation comparison:")
+    print(f"\n6-metric approach (all candidates):")
     print(f"  Average |correlation|: {corr_6.abs().mean().mean():.4f}")
     print(f"  Max off-diagonal |correlation|: {corr_6.abs().where(~np.eye(6, dtype=bool)).max().max():.4f}")
 
-    print(f"\n3-Metric Composite (blocking, betweenness, pagerank):")
+    print(f"\n3-metric composite (blocking, betweenness, pagerank):")
     print(f"  Average |correlation|: {corr_3.abs().mean().mean():.4f}")
     print(f"  Max off-diagonal |correlation|: {corr_3.abs().where(~np.eye(3, dtype=bool)).max().max():.4f}")
-    print("\n✓ Lower correlations = less redundancy = better metric selection\n")
+    print("\nLower correlations mean less redundancy, so a better metric selection.")
 
 
 def run_full_analysis():
@@ -169,18 +160,14 @@ def run_full_analysis():
     DATA_PATH = BASE_DIR / "data" / "raw" / "CSE_curriculum_data.csv"
     OUTPUT_PATH = BASE_DIR / "data" / "processed" / "all_metrics_analysis.csv"
 
-    print("="*60)
-    print("STRUCTURAL RISK METRIC REDUNDANCY ANALYSIS")
-    print("="*60)
-    print("\nThis analysis computes ALL 6 metrics to demonstrate the")
-    print("multidimensional risk approach: combining logical complexity")
-    print("and temporal fragility to identify hidden structural constraints.")
-    print("\n")
+    print("Structural risk metric redundancy analysis")
+    print("Computes all 6 metrics to show the multidimensional risk approach:")
+    print("combining logical complexity and temporal fragility.\n")
 
     df = compute_all_metrics(DATA_PATH)
 
     df.to_csv(OUTPUT_PATH, index=False)
-    print(f"✓ Full results saved to: {OUTPUT_PATH}\n")
+    print(f"Full results saved to: {OUTPUT_PATH}\n")
 
     corr_matrix = analyze_correlations(df)
 
@@ -192,14 +179,10 @@ def run_full_analysis():
     print("2. 3-Metric vs 6-Metric Comparison")
     compare_3_vs_6_metrics(df)
 
-    print("="*60)
-    print("ANALYSIS COMPLETE")
-    print("="*60)
-    print("\nComposite structural risk uses 3 metrics:")
-    print("  • Blocking Factor: Downstream credit impact")
-    print("  • Betweenness: Logical bottleneck position")
-    print("  • PageRank: Accumulated upstream dependency prestige")
-    print("="*60)
+    print("\nAnalysis complete. Composite structural risk uses 3 metrics:")
+    print("  - Blocking factor: downstream credit impact")
+    print("  - Betweenness: logical bottleneck position")
+    print("  - PageRank: accumulated upstream dependency prestige")
 
 
 if __name__ == "__main__":

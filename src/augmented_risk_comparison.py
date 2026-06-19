@@ -1,7 +1,4 @@
-"""
-Recompute composite structural risk before and after adding semantic edges
-as formal prerequisites, then plot a side-by-side top-10 ranking comparison.
-"""
+"""Recompute composite structural risk before and after adding semantic edges as formal prerequisites, then plot a side-by-side top-10 ranking comparison."""
 
 import pathlib
 import sys
@@ -132,7 +129,7 @@ def main():
     before_df = compute_risk_df(G_base)
     print(f"Base graph: {G_base.number_of_nodes()} nodes, {G_base.number_of_edges()} edges")
 
-    print("\nLoading hidden semantic dependencies...")
+    print("\nLoading hidden semantic dependencies..")
     hidden_deps = pd.read_csv(HIDDEN_DEPS_CSV)
     print(f"  {len(hidden_deps)} semantic edges found")
 
@@ -152,12 +149,12 @@ def main():
     merged.to_csv(OUTPUT_CSV, index=False)
     print(f"\nFull comparison saved → {OUTPUT_CSV}")
 
-    print("\n=== Top 10 BEFORE augmentation ===")
+    print("\nTop 10 before augmentation:")
     print(before_df.head(10).to_string(index=False))
-    print("\n=== Top 10 AFTER augmentation ===")
+    print("\nTop 10 after augmentation:")
     print(after_df.head(10).to_string(index=False))
 
-    print("\n=== Biggest rank changes ===")
+    print("\nBiggest rank changes:")
     changed = merged[merged["rank_shift"].abs() >= 2].sort_values("rank_shift", ascending=False)
     print(changed[["course_code", "risk_before", "risk_after", "rank_before", "rank_after", "rank_shift"]].to_string(index=False))
 
